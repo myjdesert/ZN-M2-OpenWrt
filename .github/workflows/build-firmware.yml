@@ -4,21 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       source_repo:
-        description: 'Source repository (immortalwrt/openwrt)'
+        description: 'Source repository'
         required: true
         default: 'immortalwrt'
       source_branch:
-        description: 'Source branch (master = snapshot with 6.12 kernel)'
+        description: 'Source branch (master = 6.12 kernel)'
         required: true
         default: 'master'
-      enable_wifi:
-        description: 'Include WiFi drivers (ath11k)'
-        required: true
-        default: 'true'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
 
 env:
   REPO_URL: https://github.com/immortalwrt/immortalwrt
@@ -43,11 +35,12 @@ jobs:
       - name: Show build info
         run: |
           echo "============================================"
-          echo " ZN-M2 OpenWrt Firmware Build"
+          echo " ZN-M2 ImmortalWrt Firmware Build"
           echo "============================================"
           echo " Source: ${{ github.event.inputs.source_repo || 'immortalwrt' }}"
           echo " Branch: ${{ github.event.inputs.source_branch || 'master' }}"
-          echo " WiFi:   ${{ github.event.inputs.enable_wifi || 'true' }}"
+          echo " WiFi:   DISABLED (no WiFi needed)"
+          echo " IPTV:   Dual-line PPPoE + policy routing"
           echo " Date:   $(date '+%Y-%m-%d %H:%M:%S %Z')"
           echo "============================================"
 
@@ -80,7 +73,7 @@ jobs:
 
       - name: Create swap file
         run: |
-          sudo fallocate -l 8G /swapfile
+          sudo dd if=/dev/zero of=/swapfile bs=1M count=8192
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
           sudo swapon /swapfile
@@ -118,9 +111,9 @@ jobs:
             openwrt/dl
             openwrt/staging_dir
             openwrt/build_dir/host
-          key: ${{ runner.os }}-zn-m2-${{ github.event.inputs.source_branch || 'master' }}-${{ hashFiles('configs/zn-m2.config') }}
+          key: ${{ runner.os }}-zn-m2-v2-${{ github.event.inputs.source_branch || 'master' }}-${{ hashFiles('configs/zn-m2.config') }}
           restore-keys: |
-            ${{ runner.os }}-zn-m2-${{ github.event.inputs.source_branch || 'master' }}-
+            ${{ runner.os }}-zn-m2-v2-${{ github.event.inputs.source_branch || 'master' }}-
 
       - name: Run DIY script (part 1 - before feeds)
         run: |
@@ -131,9 +124,6 @@ jobs:
       - name: Update and install feeds
         run: |
           cd openwrt
-          echo "=== feeds.conf.default ==="
-          cat feeds.conf.default
-          echo ""
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
@@ -146,26 +136,15 @@ jobs:
       - name: Apply custom config
         run: |
           cd openwrt
-          # Copy custom files
           cp -r ../files/* . 2>/dev/null || true
-          # Apply config
           cp ../configs/$CONFIG_FILE .config
-          # Handle WiFi toggle
-          if [ "${{ github.event.inputs.enable_wifi || 'true' }}" = "false" ]; then
-            echo "Disabling WiFi packages..."
-            sed -i 's/CONFIG_PACKAGE_ath11k-firmware-IPQ6018=y/# CONFIG_PACKAGE_ath11k-firmware-IPQ6018 is not set/' .config
-            sed -i 's/CONFIG_PACKAGE_kmod-ath11k=y/# CONFIG_PACKAGE_kmod-ath11k is not set/' .config
-            sed -i 's/CONFIG_PACKAGE_kmod-ath11k-pci=y/# CONFIG_PACKAGE_kmod-ath11k-pci is not set/' .config
-            sed -i 's/CONFIG_PACKAGE_ipq-wifi-cmiot_ax18=y/# CONFIG_PACKAGE_ipq-wifi-cmiot_ax18 is not set/' .config
-          fi
           make defconfig
 
           echo "=== Key config items ==="
-          grep -E "TARGET_qualcommax|TARGET_ipq60xx|DEVICE_zn|LINUX|passwall|rtp2httpd|igmp|ath11k|ipq-wifi" .config || true
+          grep -E "TARGET_qualcommax|TARGET_ipq60xx|DEVICE_zn|LINUX|passwall|rtp2httpd|PPPOE|pppoe" .config || true
 
-          echo "=== Estimated package sizes ==="
+          echo "=== Package count ==="
           grep "=y" .config | wc -l
-          echo "packages selected"
 
       - name: Download sources
         run: |
@@ -200,13 +179,9 @@ jobs:
         run: |
           cd openwrt
           mkdir -p /tmp/firmware-output
-          # Copy firmware files
           find bin/targets/ -name "*sysupgrade*" -o -name "*factory*" -o -name "*.ubi" 2>/dev/null | \
             while read f; do cp "$f" /tmp/firmware-output/; done
-          # Copy build info
           cp .config /tmp/firmware-output/zn-m2-build-config 2>/dev/null || true
-          cp feeds.conf.default /tmp/firmware-output/feeds.conf.default 2>/dev/null || true
-          # Generate sha256sums
           cd /tmp/firmware-output
           sha256sum * > sha256sums.txt 2>/dev/null || true
           echo "=== Final artifacts ==="
@@ -226,27 +201,30 @@ jobs:
           tag_name: ZN-M2-${{ github.run_id }}
           name: ZN-M2 Firmware ${{ github.run_id }}
           body: |
-            ## ZN-M2 OpenWrt Firmware
+            ## ZN-M2 ImmortalWrt Firmware
 
             **Build Date:** ${{ github.run_id }}
             **Source:** ImmortalWrt ${{ github.event.inputs.source_branch || 'master' }}
-            **WiFi:** ${{ github.event.inputs.enable_wifi || 'true' }}
+            **Kernel:** 6.12
+            **WiFi:** Disabled (not needed)
 
             ### Included Features
-            - PASSWALL (with Xray-core)
-            - rtp2httpd (IPTV multicast to unicast)
-            - IGMP Proxy (IPTV multicast)
-            - Guangdong Telecom IPTV network fusion config
-            - 6.12 kernel (ImmortalWrt master/snapshot)
+            - PASSWALL (Xray-core) - transparent proxy
+            - rtp2httpd - IPTV multicast to HTTP unicast
+            - Dual-line PPPoE dialing (WAN + IPTV)
+            - Policy routing for IPTV traffic
+            - Guangdong Telecom IPTV integration
 
             ### Installation
-            1. Use `*-sysupgrade.bin` for upgrading from existing OpenWrt
-            2. Use `*-factory.ubi` for flashing via U-Boot
+            1. Flash `*-factory.ubi` via U-Boot (first install)
+            2. Flash `*-sysupgrade.bin` via LuCI (upgrade)
             3. Default IP: 192.168.1.1
-            4. Default password: (empty, set on first login)
+            4. No default password (set on first login)
 
-            ### IPTV Configuration
-            See README.md for Guangdong Telecom IPTV setup guide.
+            ### Post-install
+            Edit `/etc/config/network` to set your PPPoE credentials:
+            - WAN: Broadband account/password
+            - IPTV: `jmITVxxxxx@iptv.gd` account/password
           files: /tmp/firmware-output/*
           draft: false
           prerelease: false

@@ -1,67 +1,130 @@
 # ============================================================
-# Network configuration for ZN-M2
-# Guangdong Telecom IPTV + Broadband single-line multiplex
+# ZN-M2 Network Configuration
+# Dual-line dialing: WAN (broadband) + IPTV (separate port)
+# ============================================================
+# Physical ports:
+#   wan  - Broadband PPPoE
+#   lan1 - IPTV PPPoE (independent, routing table 100)
+#   lan2, lan3, lan4 - LAN bridge (192.168.1.0/24)
 # ============================================================
 
 config interface 'loopback'
-    option device 'lo'
-    option proto 'static'
-    option ipaddr '127.0.0.1'
-    option netmask '255.0.0.0'
+	option device 'lo'
+	option proto 'static'
+	option ipaddr '127.0.0.1'
+	option netmask '255.0.0.0'
 
-# --- LAN bridge ---
+config globals 'globals'
+	option ula_prefix 'fd00::/48'
+
+# --- LAN Bridge ---
 config device
-    option name 'br-lan'
-    option type 'bridge'
-    list ports 'lan1'
-    list ports 'lan2'
-    list ports 'lan3'
-    list ports 'lan4'
-    option ipv6 '1'
+	option name 'br-lan'
+	option type 'bridge'
+	list ports 'lan2'
+	list ports 'lan3'
+	list ports 'lan4'
 
 config interface 'lan'
-    option device 'br-lan'
-    option proto 'static'
-    option ipaddr '192.168.1.1'
-    option netmask '255.255.255.0'
-    option ip6assign '60'
+	option device 'br-lan'
+	option proto 'static'
+	option ipaddr '192.168.1.1'
+	option netmask '255.255.255.0'
+	option ip6assign '60'
 
-# --- WAN: PPPoE broadband ---
-# NOTE: Replace YOUR_ACCOUNT and YOUR_PASSWORD with your broadband credentials
+# --- WAN: Broadband PPPoE ---
 config interface 'wan'
-    option device 'wan'
-    option proto 'pppoe'
-    option username 'YOUR_BROADBAND_ACCOUNT'
-    option password 'YOUR_BROADBAND_PASSWORD'
-    option ipv6 'auto'
-    option keepalive '0 5'
+	option device 'wan'
+	option proto 'pppoe'
+	option username '13812345678@139.gd'
+	option password '123456'
+	option ipv6 'auto'
+	option norelease '1'
+	option metric '10'
+	option multipath 'off'
 
-config interface 'wan6'
-    option device '@wan'
-    option proto 'dhcpv6'
+# --- IPTV: Independent PPPoE on lan1 ---
+config interface 'IPTV'
+	option proto 'pppoe'
+	option device 'lan1'
+	option username 'jmITV12345678@iptv.gd'
+	option password '12345678'
+	option ipv6 'auto'
+	option norelease '1'
+	option multipath 'off'
+	option ip4table '100'
+	option sourcefilter '0'
+	option delegate '0'
+	option metric '20'
+	option dns_metric '20'
 
-# --- IPTV: Guangdong Telecom VLAN ---
-# NOTE: VLAN ID 43 is common for Guangdong Telecom.
-#       Some areas use VLAN 51 or other values.
-#       Please confirm with your local telecom branch.
-#       Change the vid value below if needed.
-config device
-    option type '8021q'
-    option ifname 'wan'
-    option vid '43'
-    option name 'wan.43'
+# --- IPTV Static Routes (routing table 100) ---
+# Auth / VOD servers
+config route
+	option interface 'IPTV'
+	option target '183.59.0.0/16'
+	option table '100'
+	option metric '5'
 
-config interface 'iptv'
-    option device 'wan.43'
-    option proto 'dhcp'
-    # DHCP Option 60 for IPTV authentication
-    # Common values: "SCEN", "GDTVOD", or your IPTV STB MAC
-    option reqopts '12 60 43'
-    option sendopts '60:SCEN'
-    # Do not set default route via IPTV
-    option peerdns '0'
-    option defaultroute '0'
+config route
+	option interface 'IPTV'
+	option target '125.88.0.0/16'
+	option table '100'
+	option metric '5'
 
-# --- IGMP Proxy interface for multicast ---
-# The igmpproxy uses the 'iptv' interface as upstream
-# and 'lan' interface as downstream
+config route
+	option interface 'IPTV'
+	option target '59.37.0.0/16'
+	option table '100'
+	option metric '5'
+
+config route
+	option interface 'IPTV'
+	option target '202.105.0.0/16'
+	option table '100'
+	option metric '5'
+
+# Multicast / live TV
+config route
+	option interface 'IPTV'
+	option target '239.77.0.0/16'
+	option table '100'
+	option metric '5'
+
+# Internal network
+config route
+	option interface 'IPTV'
+	option target '10.0.0.0/8'
+	option table '100'
+	option metric '5'
+
+# --- IPV4 Rules: Route IPTV traffic via table 100 ---
+config rule
+	option dest '59.37.0.0/16'
+	option lookup '100'
+	option priority '100'
+
+config rule
+	option dest '125.88.0.0/16'
+	option lookup '100'
+	option priority '100'
+
+config rule
+	option dest '202.105.0.0/16'
+	option lookup '100'
+	option priority '100'
+
+config rule
+	option dest '183.59.0.0/16'
+	option lookup '100'
+	option priority '100'
+
+config rule
+	option dest '239.77.0.0/16'
+	option lookup '100'
+	option priority '100'
+
+config rule
+	option dest '10.0.0.0/8'
+	option lookup '100'
+	option priority '100'
