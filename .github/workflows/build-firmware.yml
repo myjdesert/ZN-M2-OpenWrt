@@ -73,10 +73,10 @@ jobs:
 
       - name: Create swap file
         run: |
-          sudo dd if=/dev/zero of=/swapfile bs=1M count=8192
-          sudo chmod 600 /swapfile
-          sudo mkswap /swapfile
-          sudo swapon /swapfile
+          sudo dd if=/dev/zero of=/mnt/swapfile bs=1M count=8192
+          sudo chmod 600 /mnt/swapfile
+          sudo mkswap /mnt/swapfile
+          sudo swapon /mnt/swapfile
           free -h
 
       - name: Clone source code
@@ -218,7 +218,7 @@ jobs:
             ### Installation
             1. Flash `*-factory.ubi` via U-Boot (first install)
             2. Flash `*-sysupgrade.bin` via LuCI (upgrade)
-            3. Default IP: 192.168.1.1
+            3. Default IP: 192.168.0.1
             4. No default password (set on first login)
 
             ### Post-install

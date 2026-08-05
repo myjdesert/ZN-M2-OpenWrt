@@ -172,8 +172,8 @@ make -j$(nproc) V=s
 
 或通过SSH：
 ```bash
-scp *-sysupgrade.bin root@192.168.1.1:/tmp/
-ssh root@192.168.1.1
+scp *-sysupgrade.bin root@192.168.0.1:/tmp/
+ssh root@192.168.0.1
 sysupgrade -n /tmp/*-sysupgrade.bin
 ```
 
@@ -181,8 +181,8 @@ sysupgrade -n /tmp/*-sysupgrade.bin
 
 1. 断电，按住路由器Reset按钮
 2. 接通电源，保持按住5秒后松开
-3. 电脑设置IP为 `192.168.1.2`，网线连接路由器LAN口
-4. 浏览器访问 `192.168.1.1`（U-Boot网页界面）
+3. 电脑设置IP为 `192.168.0.2`，网线连接路由器LAN口
+4. 浏览器访问 `192.168.0.1`（U-Boot网页界面）
 5. 上传 `*-factory.ubi` 文件刷入
 
 ---
@@ -197,7 +197,7 @@ sysupgrade -n /tmp/*-sysupgrade.bin
                 └── VLAN 43 (IPTV)
                       ├── IGMP Proxy ──→ 组播转发到内网
                       └── rtp2httpd ──→ 组播转单播HTTP流
-                            └── 内网设备 http://192.168.1.1:5555 观看
+                            └── 内网设备 http://192.168.0.1:5555 观看
 ```
 
 ### 配置步骤
@@ -282,9 +282,9 @@ CCTV-3, 239.77.0.3:5000
 
 配置完成后，在内网设备上：
 
-- **浏览器直接观看：** `http://192.168.1.1:5555`
-- **VLC播放器：** 添加网络流 `http://192.168.1.1:5555/stream?id=频道ID`
-- **播放列表：** `http://192.168.1.1:5555/playlist.m3u`
+- **浏览器直接观看：** `http://192.168.0.1:5555`
+- **VLC播放器：** 添加网络流 `http://192.168.0.1:5555/stream?id=频道ID`
+- **播放列表：** `http://192.168.0.1:5555/playlist.m3u`
 
 #### 6. 验证IGMP Proxy
 
