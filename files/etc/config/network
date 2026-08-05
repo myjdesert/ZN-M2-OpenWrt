@@ -1,0 +1,67 @@
+# ============================================================
+# Network configuration for ZN-M2
+# Guangdong Telecom IPTV + Broadband single-line multiplex
+# ============================================================
+
+config interface 'loopback'
+    option device 'lo'
+    option proto 'static'
+    option ipaddr '127.0.0.1'
+    option netmask '255.0.0.0'
+
+# --- LAN bridge ---
+config device
+    option name 'br-lan'
+    option type 'bridge'
+    list ports 'lan1'
+    list ports 'lan2'
+    list ports 'lan3'
+    list ports 'lan4'
+    option ipv6 '1'
+
+config interface 'lan'
+    option device 'br-lan'
+    option proto 'static'
+    option ipaddr '192.168.1.1'
+    option netmask '255.255.255.0'
+    option ip6assign '60'
+
+# --- WAN: PPPoE broadband ---
+# NOTE: Replace YOUR_ACCOUNT and YOUR_PASSWORD with your broadband credentials
+config interface 'wan'
+    option device 'wan'
+    option proto 'pppoe'
+    option username 'YOUR_BROADBAND_ACCOUNT'
+    option password 'YOUR_BROADBAND_PASSWORD'
+    option ipv6 'auto'
+    option keepalive '0 5'
+
+config interface 'wan6'
+    option device '@wan'
+    option proto 'dhcpv6'
+
+# --- IPTV: Guangdong Telecom VLAN ---
+# NOTE: VLAN ID 43 is common for Guangdong Telecom.
+#       Some areas use VLAN 51 or other values.
+#       Please confirm with your local telecom branch.
+#       Change the vid value below if needed.
+config device
+    option type '8021q'
+    option ifname 'wan'
+    option vid '43'
+    option name 'wan.43'
+
+config interface 'iptv'
+    option device 'wan.43'
+    option proto 'dhcp'
+    # DHCP Option 60 for IPTV authentication
+    # Common values: "SCEN", "GDTVOD", or your IPTV STB MAC
+    option reqopts '12 60 43'
+    option sendopts '60:SCEN'
+    # Do not set default route via IPTV
+    option peerdns '0'
+    option defaultroute '0'
+
+# --- IGMP Proxy interface for multicast ---
+# The igmpproxy uses the 'iptv' interface as upstream
+# and 'lan' interface as downstream

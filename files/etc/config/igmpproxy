@@ -1,0 +1,32 @@
+# ============================================================
+# IGMP Proxy configuration for IPTV multicast
+# Guangdong Telecom IPTV network fusion
+# ============================================================
+
+config igmpproxy
+    option quickleave '1'
+    option robust_count '2'
+    # option threshold '1'
+
+# --- Upstream: IPTV interface ---
+# Receives multicast from telecom IPTV network
+config phyint
+    option network 'iptv'
+    option direction 'upstream'
+    list altnet '0.0.0.0/0'
+
+# --- Downstream: LAN interface ---
+# Forwards multicast to local network
+config phyint
+    option network 'lan'
+    option direction 'downstream'
+    list altnet '192.168.1.0/24'
+
+# --- Disable on WAN (broadband) ---
+config phyint
+    option network 'wan'
+    option direction 'disabled'
+
+config phyint
+    option network 'wan6'
+    option direction 'disabled'

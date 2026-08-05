@@ -1,0 +1,8 @@
+openwrt/
+*.bin
+*.ubi
+*.itb
+*.ipk
+*.apk
+dl/
+build/

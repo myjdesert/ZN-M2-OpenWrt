@@ -1,0 +1,252 @@
+name: Build ZN-M2 OpenWrt Firmware
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_repo:
+        description: 'Source repository (immortalwrt/openwrt)'
+        required: true
+        default: 'immortalwrt'
+      source_branch:
+        description: 'Source branch (master = snapshot with 6.12 kernel)'
+        required: true
+        default: 'master'
+      enable_wifi:
+        description: 'Include WiFi drivers (ath11k)'
+        required: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+env:
+  REPO_URL: https://github.com/immortalwrt/immortalwrt
+  REPO_BRANCH: master
+  CONFIG_FILE: zn-m2.config
+  DIY_SH1: diy-part1.sh
+  DIY_SH2: diy-part2.sh
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    name: Build ZN-M2 Firmware
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show build info
+        run: |
+          echo "============================================"
+          echo " ZN-M2 OpenWrt Firmware Build"
+          echo "============================================"
+          echo " Source: ${{ github.event.inputs.source_repo || 'immortalwrt' }}"
+          echo " Branch: ${{ github.event.inputs.source_branch || 'master' }}"
+          echo " WiFi:   ${{ github.event.inputs.enable_wifi || 'true' }}"
+          echo " Date:   $(date '+%Y-%m-%d %H:%M:%S %Z')"
+          echo "============================================"
+
+      - name: Free disk space
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          echo "=== Before cleanup ==="
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache
+          sudo rm -rf /usr/local/share/boost /usr/lib/jvm /usr/share/swift
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo apt-get clean
+          sudo apt-get autoremove -y --purge
+          echo "=== After cleanup ==="
+          df -h /
+
+      - name: Setup build environment
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo -E apt-get update
+          sudo -E apt-get install -y \
+            build-essential clang flex bison g++ gawk gcc-multilib \
+            g++-multilib gettext git libncurses5-dev libssl-dev \
+            python3-distutils python3-setuptools rsync unzip zlib1g-dev \
+            wget curl time coreutils quilt perl python3-pip
+          sudo -E apt-get clean
+          df -h /
+
+      - name: Create swap file
+        run: |
+          sudo fallocate -l 8G /swapfile
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+
+      - name: Clone source code
+        run: |
+          REPO="${{ github.event.inputs.source_repo || 'immortalwrt' }}"
+          BRANCH="${{ github.event.inputs.source_branch || 'master' }}"
+
+          if [ "$REPO" = "immortalwrt" ]; then
+            git clone --depth 1 --single-branch -b "$BRANCH" \
+              https://github.com/immortalwrt/immortalwrt openwrt
+          else
+            git clone --depth 1 --single-branch -b "$BRANCH" \
+              "$REPO" openwrt
+          fi
+
+          cd openwrt
+          echo "=== Git info ==="
+          git log -1 --format="%H %ci %s"
+          echo ""
+          echo "=== Kernel version ==="
+          grep -r "LINUX_KERNEL_HASH" include/kernel-* 2>/dev/null | head -5 || true
+          grep -r "LINUX_VERSION" include/kernel-* target/linux/Makefile 2>/dev/null | head -5 || true
+          echo ""
+          echo "=== Supported IPQ60xx devices ==="
+          find target/linux/qualcommax -name "*Makefile*" -exec grep -l "ipq60xx\|zn.m2\|zn_m2" {} \; 2>/dev/null || true
+          grep -r "zn_m2\|ZN.M2\|zn-m2" target/linux/qualcommax/image/ 2>/dev/null || true
+
+      - name: Cache toolchain and dl
+        uses: actions/cache@v4
+        with:
+          path: |
+            openwrt/dl
+            openwrt/staging_dir
+            openwrt/build_dir/host
+          key: ${{ runner.os }}-zn-m2-${{ github.event.inputs.source_branch || 'master' }}-${{ hashFiles('configs/zn-m2.config') }}
+          restore-keys: |
+            ${{ runner.os }}-zn-m2-${{ github.event.inputs.source_branch || 'master' }}-
+
+      - name: Run DIY script (part 1 - before feeds)
+        run: |
+          cd openwrt
+          chmod +x ../scripts/$DIY_SH1
+          ../scripts/$DIY_SH1
+
+      - name: Update and install feeds
+        run: |
+          cd openwrt
+          echo "=== feeds.conf.default ==="
+          cat feeds.conf.default
+          echo ""
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+
+      - name: Run DIY script (part 2 - after feeds)
+        run: |
+          cd openwrt
+          chmod +x ../scripts/$DIY_SH2
+          ../scripts/$DIY_SH2
+
+      - name: Apply custom config
+        run: |
+          cd openwrt
+          # Copy custom files
+          cp -r ../files/* . 2>/dev/null || true
+          # Apply config
+          cp ../configs/$CONFIG_FILE .config
+          # Handle WiFi toggle
+          if [ "${{ github.event.inputs.enable_wifi || 'true' }}" = "false" ]; then
+            echo "Disabling WiFi packages..."
+            sed -i 's/CONFIG_PACKAGE_ath11k-firmware-IPQ6018=y/# CONFIG_PACKAGE_ath11k-firmware-IPQ6018 is not set/' .config
+            sed -i 's/CONFIG_PACKAGE_kmod-ath11k=y/# CONFIG_PACKAGE_kmod-ath11k is not set/' .config
+            sed -i 's/CONFIG_PACKAGE_kmod-ath11k-pci=y/# CONFIG_PACKAGE_kmod-ath11k-pci is not set/' .config
+            sed -i 's/CONFIG_PACKAGE_ipq-wifi-cmiot_ax18=y/# CONFIG_PACKAGE_ipq-wifi-cmiot_ax18 is not set/' .config
+          fi
+          make defconfig
+
+          echo "=== Key config items ==="
+          grep -E "TARGET_qualcommax|TARGET_ipq60xx|DEVICE_zn|LINUX|passwall|rtp2httpd|igmp|ath11k|ipq-wifi" .config || true
+
+          echo "=== Estimated package sizes ==="
+          grep "=y" .config | wc -l
+          echo "packages selected"
+
+      - name: Download sources
+        run: |
+          cd openwrt
+          make download -j$(nproc) 2>&1 | tail -20 || {
+            echo "Download failed, retrying..."
+            make download -j1 V=s 2>&1 | tail -50
+          }
+
+      - name: Compile firmware
+        run: |
+          cd openwrt
+          echo "Starting compilation at $(date)"
+          make -j$(nproc) V=s 2>&1 | tee build.log | tail -100 || {
+            echo "============================================"
+            echo "First pass failed, retrying with single thread..."
+            echo "============================================"
+            make -j1 V=s 2>&1 | tail -200
+          }
+          echo "Compilation finished at $(date)"
+
+      - name: List output files
+        run: |
+          cd openwrt
+          echo "=== Output files ==="
+          find bin/targets/ -type f -name "*.bin" -o -name "*.ubi" -o -name "*.itb" 2>/dev/null || true
+          echo ""
+          echo "=== File sizes ==="
+          ls -lh bin/targets/*/*/ 2>/dev/null || true
+
+      - name: Prepare artifacts
+        run: |
+          cd openwrt
+          mkdir -p /tmp/firmware-output
+          # Copy firmware files
+          find bin/targets/ -name "*sysupgrade*" -o -name "*factory*" -o -name "*.ubi" 2>/dev/null | \
+            while read f; do cp "$f" /tmp/firmware-output/; done
+          # Copy build info
+          cp .config /tmp/firmware-output/zn-m2-build-config 2>/dev/null || true
+          cp feeds.conf.default /tmp/firmware-output/feeds.conf.default 2>/dev/null || true
+          # Generate sha256sums
+          cd /tmp/firmware-output
+          sha256sum * > sha256sums.txt 2>/dev/null || true
+          echo "=== Final artifacts ==="
+          ls -lh /tmp/firmware-output/
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZN-M2-firmware-${{ github.run_id }}
+          path: /tmp/firmware-output/*
+          retention-days: 30
+
+      - name: Create release
+        if: github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ZN-M2-${{ github.run_id }}
+          name: ZN-M2 Firmware ${{ github.run_id }}
+          body: |
+            ## ZN-M2 OpenWrt Firmware
+
+            **Build Date:** ${{ github.run_id }}
+            **Source:** ImmortalWrt ${{ github.event.inputs.source_branch || 'master' }}
+            **WiFi:** ${{ github.event.inputs.enable_wifi || 'true' }}
+
+            ### Included Features
+            - PASSWALL (with Xray-core)
+            - rtp2httpd (IPTV multicast to unicast)
+            - IGMP Proxy (IPTV multicast)
+            - Guangdong Telecom IPTV network fusion config
+            - 6.12 kernel (ImmortalWrt master/snapshot)
+
+            ### Installation
+            1. Use `*-sysupgrade.bin` for upgrading from existing OpenWrt
+            2. Use `*-factory.ubi` for flashing via U-Boot
+            3. Default IP: 192.168.1.1
+            4. Default password: (empty, set on first login)
+
+            ### IPTV Configuration
+            See README.md for Guangdong Telecom IPTV setup guide.
+          files: /tmp/firmware-output/*
+          draft: false
+          prerelease: false

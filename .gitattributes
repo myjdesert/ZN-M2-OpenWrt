@@ -1,0 +1,12 @@
+# Force LF line endings for shell scripts and configs (GitHub Actions runs on Linux)
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.config text eol=lf
+*.custom text eol=lf
+
+# Ignore binary and build artifacts
+*.bin binary
+*.ubi binary
+*.ipk binary
+*.apk binary

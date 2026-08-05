@@ -1,0 +1,11 @@
+# ============================================================
+# Custom feeds for ZN-M2 firmware
+# Add these to feeds.conf.default before running feeds update
+# ============================================================
+
+# PASSWALL - proxy toolchain
+src-git passwall_packages https://github.com/Openwrt-Passwall/openwrt-passwall-packages.git;main
+src-git passwall_luci https://github.com/Openwrt-Passwall/openwrt-passwall.git;main
+
+# Note: rtp2httpd is added via diy-part2.sh (git clone to package dir)
+# because its feed structure is non-standard (openwrt-support/ subdirectory)

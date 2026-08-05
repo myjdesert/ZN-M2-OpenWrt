@@ -1,0 +1,131 @@
+# ============================================================
+# Firewall configuration for ZN-M2
+# Includes IPTV zone and multicast rules
+# ============================================================
+
+config defaults
+    option input 'REJECT'
+    option output 'ACCEPT'
+    option forward 'REJECT'
+    option synflood_protect '1'
+    option flow_offloading '1'
+    option flow_offloading_hw '1'
+
+# --- LAN zone ---
+config zone
+    option name 'lan'
+    list network 'lan'
+    option input 'ACCEPT'
+    option output 'ACCEPT'
+    option forward 'ACCEPT'
+
+# --- WAN zone ---
+config zone
+    option name 'wan'
+    list network 'wan'
+    list network 'wan6'
+    option input 'REJECT'
+    option output 'ACCEPT'
+    option forward 'REJECT'
+    option masq '1'
+    option mtu_fix '1'
+
+# --- IPTV zone ---
+# Separate zone for IPTV traffic to allow multicast forwarding
+config zone
+    option name 'iptv'
+    list network 'iptv'
+    option input 'ACCEPT'
+    option output 'ACCEPT'
+    option forward 'ACCEPT'
+
+# --- Forwarding rules ---
+config forwarding
+    option src 'lan'
+    option dest 'wan'
+
+config forwarding
+    option src 'lan'
+    option dest 'iptv'
+
+# --- IPTV multicast rules ---
+
+# Allow IGMP protocol from IPTV
+config rule
+    option name 'Allow-IGMP-IPTV-In'
+    option src 'iptv'
+    option proto 'igmp'
+    option target 'ACCEPT'
+
+# Allow IGMP from LAN to IPTV (for IGMP join/leave)
+config rule
+    option name 'Allow-IGMP-LAN-Out'
+    option src 'lan'
+    option dest 'iptv'
+    option proto 'igmp'
+    option target 'ACCEPT'
+
+# Allow multicast traffic from IPTV to LAN
+config rule
+    option name 'Allow-Multicast-IPTV-to-LAN'
+    option src 'iptv'
+    option dest 'lan'
+    option proto 'udp'
+    option dest_ip '224.0.0.0/4'
+    option target 'ACCEPT'
+
+# Allow rtp2httpd HTTP access (port 5555)
+config rule
+    option name 'Allow-rtp2httpd'
+    option src 'lan'
+    option dest_port '5555'
+    option proto 'tcp'
+    option target 'ACCEPT'
+
+# --- Standard rules ---
+config rule
+    option name 'Allow-DHCP-Renew'
+    option src 'wan'
+    option proto 'udp'
+    option dest_port '68'
+    option target 'ACCEPT'
+    option family 'ipv4'
+
+config rule
+    option name 'Allow-Ping'
+    option src 'wan'
+    option proto 'icmp'
+    option icmp_type 'echo-request'
+    option family 'ipv4'
+    option target 'ACCEPT'
+
+config rule
+    option name 'Allow-IPv6-ICMP'
+    option src 'wan'
+    option proto 'icmp'
+    list icmp_type 'echo-request'
+    list icmp_type 'echo-reply'
+    list icmp_type 'destination-unreachable'
+    list icmp_type 'packet-too-big'
+    list icmp_type 'time-exceeded'
+    list icmp_type 'bad-header'
+    list icmp_type 'unknown-header-type'
+    list icmp_type 'router-solicitation'
+    list icmp_type 'neighbour-solicitation'
+    option family 'ipv6'
+    option target 'ACCEPT'
+
+config rule
+    option name 'Allow-IPSec-ESP'
+    option src 'wan'
+    option dest 'lan'
+    option proto 'esp'
+    option target 'ACCEPT'
+
+config rule
+    option name 'Allow-ISAKMP'
+    option src 'wan'
+    option dest 'lan'
+    option dest_port '500'
+    option proto 'udp'
+    option target 'ACCEPT'
