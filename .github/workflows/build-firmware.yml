@@ -130,15 +130,15 @@ jobs:
           make defconfig
 
           echo "=== Key config items ==="
-          grep -E "TARGET_qualcommax|TARGET_DEVICE.*zn_m2|LINUX|passwall|rtp2httpd|PPPOE|pppoe" .config || true
+          grep -E "TARGET_qualcommax|TARGET.*DEVICE.*zn_m2|LINUX|passwall|rtp2httpd|gecoosac|PPPOE|pppoe" .config || true
 
           echo "=== Verify target device ==="
-          if grep -q "CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_zn_m2=y" .config; then
+          if grep -q "CONFIG_TARGET_qualcommax_ipq60xx_DEVICE_zn_m2=y" .config; then
             echo "OK: ZN-M2 device selected correctly!"
           else
             echo "ERROR: ZN-M2 device NOT selected! Check config and patches."
             echo "Current target devices:"
-            grep "CONFIG_TARGET_DEVICE.*=y" .config || true
+            grep "CONFIG_TARGET.*DEVICE.*=y" .config || true
             exit 1
           fi
 
