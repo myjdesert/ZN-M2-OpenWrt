@@ -10,20 +10,20 @@
 | 处理器 | Qualcomm IPQ6000 (ARM Cortex-A53, 1.2GHz) |
 | 内存 | 1GB（已扩容） |
 | 闪存 | 128MB NAND（可用约94MB） |
-| WiFi | WiFi6 双频 (ath11k) |
+| WiFi | WiFi6 双频 (ath11k) — **本固件已禁用** |
 | 编译目标 | qualcommax / ipq60xx / zn_m2 |
 
 ## 固件特性
 
-- **ImmortalWrt** 基础系统（master分支，6.12内核）
+- **ImmortalWrt** 基础系统（VIKINGYFY fork，master分支，6.18内核）
 - **PASSWALL** 代理工具（含 Xray-core 核心）
 - **rtp2httpd** IPTV组播转单播HTTP流
-- **IGMP Proxy** 组播代理（IPTV内网融合）
-- **广东电信IPTV内网融合** 预配置（单线复用）
+- **广东电信IPTV内网融合** 预配置（双线独立拨号 + 策略路由）
 - **TurboACC** 网络加速
-- **WiFi6** 支持（ath11k驱动 + 板级校准文件）
+- **NSS硬件加速** QCA NSS驱动全系列
+- **VLAN支持** kmod-8021q（可用但非默认启用）
 - **中文LuCI界面** 简体中文
-- **精简固件** 针对128MB NAND优化空间
+- **精简固件** 无WiFi，针对128MB NAND优化空间
 
 ## 目录结构
 
@@ -36,11 +36,10 @@ ZN-M2-OpenWrt/
 ├── files/                      # 自定义文件（刷入固件）
 │   └── etc/
 │       ├── config/
-│       │   ├── network         # 网络配置（PPPoE + IPTV VLAN）
-│       │   ├── firewall        # 防火墙配置（含IPTV规则）
+│       │   ├── network         # 网络配置（双线PPPoE + 策略路由）
+│       │   ├── firewall        # 防火墙配置（含IPTV区域规则）
 │       │   ├── dhcp            # DHCP配置
-│       │   ├── system          # 系统配置（时区等）
-│       │   └── igmpproxy       # IGMP代理配置
+│       │   └── system          # 系统配置（时区等）
 │       └── uci-defaults/
 │           └── zz-iptv-fusion.sh  # 首次启动IPTV初始化
 ├── scripts/
@@ -71,9 +70,8 @@ ZN-M2-OpenWrt/
    - 在左侧选择 **Build ZN-M2 OpenWrt Firmware**
    - 点击右侧 **Run workflow** 按钮
    - 选择参数：
-     - `source_repo`: 保持默认 `immortalwrt`
-     - `source_branch`: 保持默认 `master`（6.12内核）
-     - `enable_wifi`: 选择是否包含WiFi驱动
+     - `source_repo`: 保持默认 `vikingyfy`（VIKINGYFY fork，支持ZN-M2设备）
+     - `source_branch`: 保持默认 `master`（6.18内核）
    - 点击绿色 **Run workflow** 按钮开始编译
 
 3. **等待编译完成**
@@ -132,7 +130,7 @@ sudo apt-get install -y build-essential clang flex bison g++ gawk \
   python3-distutils python3-setuptools rsync unzip zlib1g-dev
 
 # 克隆源码
-git clone --depth 1 -b master https://github.com/immortalwrt/immortalwrt openwrt
+git clone --depth 1 -b master https://github.com/VIKINGYFY/immortalwrt openwrt
 cd openwrt
 
 # 添加feeds
@@ -192,64 +190,58 @@ sysupgrade -n /tmp/*-sysupgrade.bin
 ### 工作原理
 
 ```
-光纤/光猫 ──→ ZN-M2 WAN口
-                ├── PPPoE拨号 (宽带上网)
-                └── VLAN 43 (IPTV)
-                      ├── IGMP Proxy ──→ 组播转发到内网
-                      └── rtp2httpd ──→ 组播转单播HTTP流
-                            └── 内网设备 http://192.168.0.1:5555 观看
+光猫桥接 ──→ ZN-M2 WAN口 (PPPoE宽带拨号, metric 10)
+光猫桥接 ──→ ZN-M2 LAN1口 (PPPoE IPTV拨号, table 100, metric 20)
+                ├── 策略路由: IPTV网段走 table 100
+                │   183.59/16, 125.88/16, 59.37/16, 202.105/16 (鉴权/回看)
+                │   239.77/16 (组播直播), 10/8 (IPTV内网)
+                └── rtp2httpd ──→ 组播转单播HTTP流
+                      └── 内网设备 http://192.168.0.1:5555 观看
 ```
 
 ### 配置步骤
 
-#### 1. 配置宽带拨号
+#### 1. 配置双线PPPoE拨号
 
-首次启动后，通过SSH或LuCI配置PPPoE：
+首次启动后，通过SSH或LuCI配置两个PPPoE连接：
 
 ```bash
-# 设置宽带账号密码（替换为你的实际账号密码）
+# 设置宽带账号密码（WAN口）
 uci set network.wan.username='你的宽带账号'
 uci set network.wan.password='你的宽带密码'
+
+# 设置IPTV账号密码（LAN1口）
+uci set network.iptv.username='jmITVxxxxx@iptv.gd'
+uci set network.iptv.password='你的IPTV密码'
+
 uci commit network
 /etc/init.d/network restart
 ```
 
-#### 2. 确认IPTV VLAN ID
+> **注意：** IPTV账号格式通常为 `jmITVxxxxx@iptv.gd`，密码为机顶盒底贴密码。
+> WAN口和LAN1口需要分别连接到光猫的两个LAN口（或两根光纤桥接）。
 
-固件默认使用 **VLAN 43**（广东电信常见值）。如果无法获取IPTV IP，请确认当地VLAN：
+#### 2. 验证策略路由
+
+固件已预配置策略路由，IPTV网段走 table 100：
 
 ```bash
-# 查看IPTV接口状态
-ifconfig wan.43
+# 查看IPTV拨号状态
+ifconfig iptv
 
-# 如果没有IP，尝试其他常见VLAN
-# 广东电信常见VLAN: 43, 51, 100, 200
-# 修改VLAN ID:
-uci set network.@device[1].vid='51'  # 改为你的实际VLAN
-uci commit network
-/etc/init.d/network restart
+# 查看策略路由规则
+ip rule show | grep 100
+
+# 查看路由表100
+ip route show table 100
+
+# 测试IPTV网段路由
+ip route get 183.59.0.1
 ```
 
-**如何确认VLAN ID：**
-- 登录光猫管理页面查看IPTV VLAN配置
-- 或联系当地电信客服查询
-- 或通过抓包获取（需要光猫桥接模式）
+预期结果：IPTV网段（183.59/16, 125.88/16, 59.37/16, 202.105/16, 239.77/16, 10/8）应通过 IPTV PPPoE 接口路由。
 
-#### 3. 配置DHCP Option 60
-
-广东电信IPTV通常需要DHCP Option 60鉴权。固件默认发送 `SCEN`：
-
-```bash
-# 查看当前Option 60
-uci get network.iptv.sendopts
-
-# 修改Option 60（部分地区使用其他值）
-uci set network.iptv.sendopts='60:GDTVOD'
-uci commit network
-/etc/init.d/network restart
-```
-
-#### 4. 配置rtp2httpd
+#### 3. 配置rtp2httpd
 
 rtp2httpd将IPTV组播RTP流转换为HTTP流，方便内网设备观看。
 
@@ -257,7 +249,7 @@ rtp2httpd将IPTV组播RTP流转换为HTTP流，方便内网设备观看。
 2. 确认以下设置：
    - 绑定地址: `0.0.0.0`
    - 绑定端口: `5555`
-   - 组播接口: `wan.43`
+   - 组播接口: `iptv`（IPTV PPPoE接口）
 3. 添加频道列表（组播地址）
 
 **广东电信常见频道组播地址（239.77.x.x，仅供参考）：**
@@ -275,10 +267,10 @@ CCTV-3, 239.77.0.3:5000
 > 
 > 抓包方法：在IPTV机顶盒观看频道时，在路由器SSH中运行：
 > ```bash
-> tcpdump -i wan.43 -nn host 239.77.0.0/16 and udp
+> tcpdump -i iptv -nn host 239.77.0.0/16 and udp
 > ```
 
-#### 5. 观看IPTV
+#### 4. 观看IPTV
 
 配置完成后，在内网设备上：
 
@@ -286,15 +278,18 @@ CCTV-3, 239.77.0.3:5000
 - **VLC播放器：** 添加网络流 `http://192.168.0.1:5555/stream?id=频道ID`
 - **播放列表：** `http://192.168.0.1:5555/playlist.m3u`
 
-#### 6. 验证IGMP Proxy
+#### 5. 验证IPTV连接
 
 ```bash
-# 查看IGMP代理状态
-/etc/init.d/igmpproxy status
+# 查看IPTV拨号状态
+ifconfig iptv
 
-# 查看组播路由
-cat /proc/net/ip_mr_cache
-cat /proc/net/ip_mr_vif
+# 查看策略路由
+ip rule show | grep 100
+ip route show table 100
+
+# 测试IPTV网段连通性
+ping -c 3 -I iptv 183.59.0.1
 
 # 查看组播组成员
 cat /proc/net/igmp
@@ -341,26 +336,25 @@ cat /proc/net/igmp
 
 ### Q: WiFi无法使用？
 
-**A:**
-1. 确认编译时选择了WiFi驱动（enable_wifi=true）
-2. 检查无线配置文件：`ls /lib/firmware/ath11k/IPQ6018/hw2.0/`
-3. 确认板级校准文件存在：`board-cmiot-ax18.bin`
-4. 查看内核日志：`dmesg | grep ath11k`
+**A:** 本固件已禁用WiFi以节省NAND空间。如需WiFi功能：
+1. 需修改 `configs/zn-m2.config`，移除 WiFi 包的 `# ... is not set` 注释
+2. 修改 `scripts/diy-part2.sh`，移除 WiFi patch 步骤
+3. 重新编译固件
 
 ### Q: IPTV无法观看？
 
 **A:** 按以下顺序排查：
-1. **IPTV接口是否有IP：** `ifconfig wan.43`
-2. **IGMP Proxy是否运行：** `/etc/init.d/igmpproxy status`
-3. **能否收到组播流：** `tcpdump -i wan.43 -nn udp port 5000`
-4. **rtp2httpd是否运行：** `/etc/init.d/rtp2httpd status`
-5. **VLAN ID是否正确：** 联系电信确认
-6. **Option 60是否正确：** 尝试不同的Option 60值
+1. **IPTV拨号是否成功：** `ifconfig iptv`（是否有IP地址）
+2. **策略路由是否生效：** `ip rule show | grep 100`
+3. **IPTV网段路由是否正确：** `ip route get 183.59.0.1`（应走iptv接口）
+4. **能否收到组播流：** `tcpdump -i iptv -nn udp port 5000`
+5. **rtp2httpd是否运行：** `/etc/init.d/rtp2httpd status`
+6. **IPTV账号密码是否正确：** 检查 `/etc/config/network` 中的 IPTV PPPoE 配置
 
 ### Q: NAND空间不够？
 
 **A:** 精简方案：
-1. 编译时关闭WiFi（enable_wifi=false），节省约10MB
+1. WiFi已禁用，节省约15MB
 2. 在.config中注释掉不需要的包
 3. 使用更激进的squashfs压缩
 4. 考虑使用暗云扩容版U-Boot（增大rootfs分区）
@@ -385,10 +379,9 @@ uci commit network
 ## 技术参考
 
 - [ImmortalWrt 官方](https://github.com/immortalwrt/immortalwrt)
+- [VIKINGYFY Fork（ZN-M2支持）](https://github.com/VIKINGYFY/immortalwrt)
 - [PASSWALL 源码](https://github.com/Openwrt-Passwall/openwrt-passwall)
 - [rtp2httpd 源码](https://github.com/stackia/rtp2httpd)
-- [ZN-M2 编译参考](https://github.com/iamaluckyguy/-M2-6.x-openwrt-ci)
-- [兆能M2 OpenWrt教程](https://sspai.com/post/88679)
 
 ---
 

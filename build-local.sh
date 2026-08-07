@@ -9,7 +9,7 @@
 set -e
 
 # --- Configuration ---
-REPO_URL="https://github.com/immortalwrt/immortalwrt"
+REPO_URL="https://github.com/VIKINGYFY/immortalwrt"
 REPO_BRANCH="master"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="${SCRIPT_DIR}/openwrt"
@@ -58,10 +58,10 @@ if [ "$TOTAL_MEM" -lt 4096 ]; then
     # Create swap if needed
     if [ ! -f /swapfile ]; then
         info "Creating 8GB swap file..."
-        sudo fallocate -l 8G /swapfile
-        sudo chmod 600 /swapfile
-        sudo mkswap /swapfile
-        sudo swapon /swapfile
+        sudo dd if=/dev/zero of=/mnt/swapfile bs=1M count=8192
+        sudo chmod 600 /mnt/swapfile
+        sudo mkswap /mnt/swapfile
+        sudo swapon /mnt/swapfile
         info "Swap enabled."
     fi
 fi
@@ -78,7 +78,7 @@ sudo apt-get clean
 echo ""
 
 # --- Step 2: Clone source ---
-info "Step 2: Cloning ImmortalWrt source..."
+info "Step 2: Cloning ImmortalWrt source (VIKINGYFY fork with ZN-M2 support)..."
 if [ -d "$BUILD_DIR" ]; then
     warn "Build directory exists: $BUILD_DIR"
     read -p "Reuse existing source? (y/N) " -r
@@ -132,7 +132,7 @@ cp -r "${SCRIPT_DIR}/files/"* . 2>/dev/null || true
 cp "$CONFIG_FILE" .config
 make defconfig
 info "Config applied. Key settings:"
-grep -E "TARGET_qualcommax|TARGET_ipq60xx|DEVICE_zn|passwall|rtp2httpd|igmp" .config | head -20
+grep -E "TARGET_qualcommax|TARGET_DEVICE.*zn_m2|passwall|rtp2httpd|pppoe" .config | head -20
 echo ""
 
 # --- Step 7: Download ---
