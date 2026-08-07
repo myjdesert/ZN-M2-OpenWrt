@@ -129,7 +129,7 @@ echo " Kernel:  6.12"
 echo " Target:  qualcommax/ipq60xx/zn_m2"
 echo " WiFi:    DISABLED"
 echo " IPTV:    Dual-line PPPoE + policy routing"
-echo " Features: PASSWALL + rtp2httpd"
+echo " Features: PASSWALL (Xray+sing-box) + rtp2httpd"
 echo "============================================"
 
 echo ""
