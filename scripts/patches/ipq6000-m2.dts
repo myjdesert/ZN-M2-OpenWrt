@@ -1,0 +1,231 @@
+// SPDX-License-Identifier: GPL-2.0-or-later OR MIT
+//
+// DTS for ZN-M2 (IPQ6000) - adapted for ImmortalWrt v25.12.1 (kernel 6.12)
+// Based on: VIKINGYFY/immortalwrt ipq6000-m2.dts + ipq6000-cmiot.dtsi
+// Adapted to use v25.12.1's include structure (no ipq6018-nss.dtsi / ipq6018-common.dtsi)
+// WiFi node omitted (not needed)
+
+/dts-v1/;
+
+#include "ipq6018-512m.dtsi"
+#include "ipq6018-ess.dtsi"
+#include "ipq6018-cp-cpu.dtsi"
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/input/input.h>
+#include <dt-bindings/leds/common.h>
+
+/ {
+	model = "ZN M2";
+	compatible = "zn,m2", "qcom,ipq6018";
+
+	aliases {
+		serial0 = &blsp1_uart3;
+		ethernet0 = &dp1;
+		ethernet1 = &dp2;
+		ethernet3 = &dp4;
+		ethernet4 = &dp5;
+
+		led-boot = &led_power;
+		led-failsafe = &led_power;
+		led-running = &led_power;
+		led-upgrade = &led_power;
+	};
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+		bootargs-append = " root=/dev/ubiblock0_1";
+	};
+
+	keys {
+		compatible = "gpio-keys";
+
+		reset {
+			label = "reset";
+			gpios = <&tlmm 60 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_RESTART>;
+		};
+
+		wps {
+			label = "wps";
+			gpios = <&tlmm 9 GPIO_ACTIVE_LOW>;
+			linux,code = <KEY_WPS_BUTTON>;
+		};
+	};
+
+	leds {
+		compatible = "gpio-leds";
+
+		led_power: power {
+			color = <LED_COLOR_ID_BLUE>;
+			function = LED_FUNCTION_POWER;
+			gpios = <&tlmm 58 GPIO_ACTIVE_HIGH>;
+		};
+
+		wps {
+			color = <LED_COLOR_ID_BLUE>;
+			function = LED_FUNCTION_WPS;
+			gpios = <&tlmm 73 GPIO_ACTIVE_HIGH>;
+		};
+
+		lan {
+			color = <LED_COLOR_ID_BLUE>;
+			function = LED_FUNCTION_LAN;
+			gpios = <&tlmm 74 GPIO_ACTIVE_HIGH>;
+		};
+
+		wan {
+			color = <LED_COLOR_ID_BLUE>;
+			function = LED_FUNCTION_WAN;
+			gpios = <&tlmm 37 GPIO_ACTIVE_HIGH>;
+		};
+	};
+};
+
+&tlmm {
+	mdio_pins: mdio-pins {
+		mdc {
+			pins = "gpio64";
+			function = "mdc";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+
+		mdio {
+			pins = "gpio65";
+			function = "mdio";
+			drive-strength = <8>;
+			bias-pull-up;
+		};
+	};
+};
+
+&blsp1_uart3 {
+	pinctrl-0 = <&serial_3_pins>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&crypto {
+	status = "okay";
+};
+
+&cryptobam {
+	status = "okay";
+};
+
+&prng {
+	status = "okay";
+};
+
+&qpic_bam {
+	status = "okay";
+};
+
+&qpic_nand {
+	status = "okay";
+
+	nand@0 {
+		reg = <0>;
+		nand-ecc-strength = <4>;
+		nand-ecc-step-size = <512>;
+		nand-bus-width = <8>;
+
+		partitions {
+			compatible = "qcom,smem-part";
+		};
+	};
+};
+
+&mdio {
+	status = "okay";
+
+	pinctrl-0 = <&mdio_pins>;
+	pinctrl-names = "default";
+	reset-gpios = <&tlmm 75 GPIO_ACTIVE_LOW>;
+
+	ethernet-phy-package@0 {
+		compatible = "qcom,qca8075-package";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <0>;
+
+		qca8075_0: ethernet-phy@0 {
+			compatible = "ethernet-phy-ieee802.3-c22";
+			reg = <0>;
+		};
+
+		qca8075_1: ethernet-phy@1 {
+			compatible = "ethernet-phy-ieee802.3-c22";
+			reg = <1>;
+		};
+
+		qca8075_3: ethernet-phy@3 {
+			compatible = "ethernet-phy-ieee802.3-c22";
+			reg = <3>;
+		};
+
+		qca8075_4: ethernet-phy@4 {
+			compatible = "ethernet-phy-ieee802.3-c22";
+			reg = <4>;
+		};
+	};
+};
+
+&switch {
+	status = "okay";
+
+	switch_lan_bmp = <(ESS_PORT1 | ESS_PORT2 | ESS_PORT4)>;
+	switch_wan_bmp = <ESS_PORT5>;
+	switch_mac_mode = <MAC_MODE_PSGMII>;
+
+	qcom,port_phyinfo {
+		port@1 {
+			port_id = <1>;
+			phy_address = <0>;
+		};
+
+		port@2 {
+			port_id = <2>;
+			phy_address = <1>;
+		};
+
+		port@4 {
+			port_id = <4>;
+			phy_address = <3>;
+		};
+
+		port@5 {
+			port_id = <5>;
+			phy_address = <4>;
+		};
+	};
+};
+
+&edma {
+	status = "okay";
+};
+
+&dp1 {
+	status = "okay";
+	phy-handle = <&qca8075_0>;
+	label = "lan3";
+};
+
+&dp2 {
+	status = "okay";
+	phy-handle = <&qca8075_1>;
+	label = "lan2";
+};
+
+&dp4 {
+	status = "okay";
+	phy-handle = <&qca8075_3>;
+	label = "lan1";
+};
+
+&dp5 {
+	status = "okay";
+	phy-handle = <&qca8075_4>;
+	label = "wan";
+};

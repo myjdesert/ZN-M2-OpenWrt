@@ -2,19 +2,10 @@ name: Build ZN-M2 OpenWrt Firmware
 
 on:
   workflow_dispatch:
-    inputs:
-      source_repo:
-        description: 'Source repository (default: VIKINGYFY fork with ZN-M2 support)'
-        required: true
-        default: 'vikingyfy'
-      source_branch:
-        description: 'Source branch (master = 6.18 kernel)'
-        required: true
-        default: 'master'
 
 env:
-  REPO_URL: https://github.com/VIKINGYFY/immortalwrt
-  REPO_BRANCH: master
+  REPO_URL: https://github.com/immortalwrt/immortalwrt
+  REPO_TAG: v25.12.1
   CONFIG_FILE: zn-m2.config
   DIY_SH1: diy-part1.sh
   DIY_SH2: diy-part2.sh
@@ -37,8 +28,8 @@ jobs:
           echo "============================================"
           echo " ZN-M2 ImmortalWrt Firmware Build"
           echo "============================================"
-          echo " Source: ${{ github.event.inputs.source_repo || 'vikingyfy' }}"
-          echo " Branch: ${{ github.event.inputs.source_branch || 'master' }}"
+          echo " Source: ImmortalWrt ${{ env.REPO_TAG }} (STABLE)"
+          echo " Kernel: 6.12"
           echo " WiFi:   DISABLED (no WiFi needed)"
           echo " IPTV:   Dual-line PPPoE + policy routing"
           echo " Date:   $(date '+%Y-%m-%d %H:%M:%S %Z')"
@@ -81,40 +72,25 @@ jobs:
 
       - name: Clone source code
         run: |
-          REPO="${{ github.event.inputs.source_repo || 'vikingyfy' }}"
-          BRANCH="${{ github.event.inputs.source_branch || 'master' }}"
-
-          if [ "$REPO" = "vikingyfy" ] || [ "$REPO" = "VIKINGYFY" ]; then
-            echo "Using VIKINGYFY fork (has ZN-M2 device support, kernel 6.18)"
-            git clone --depth 1 --single-branch -b "$BRANCH" \
-              https://github.com/VIKINGYFY/immortalwrt openwrt
-          elif [ "$REPO" = "immortalwrt" ]; then
-            echo "WARNING: Official ImmortalWrt does NOT have ZN-M2 support!"
-            echo "Falling back to VIKINGYFY fork..."
-            git clone --depth 1 --single-branch -b "$BRANCH" \
-              https://github.com/VIKINGYFY/immortalwrt openwrt
-          else
-            echo "Using custom repo: $REPO"
-            git clone --depth 1 --single-branch -b "$BRANCH" \
-              "$REPO" openwrt
-          fi
+          echo "Cloning ImmortalWrt $REPO_TAG (stable release)..."
+          git clone --depth 1 --single-branch -b "$REPO_TAG" \
+            "$REPO_URL" openwrt
 
           cd openwrt
           echo "=== Git info ==="
           git log -1 --format="%H %ci %s"
           echo ""
           echo "=== Kernel version ==="
-          grep -r "LINUX_KERNEL_HASH" include/kernel-* 2>/dev/null | head -5 || true
-          grep -r "LINUX_VERSION" include/kernel-* target/linux/Makefile 2>/dev/null | head -5 || true
+          grep -r "KERNEL_PATCHVER" target/linux/qualcommax/Makefile 2>/dev/null || true
           echo ""
-          echo "=== Verify ZN-M2 device exists ==="
-          grep -r "zn_m2\|ZN.M2\|zn-m2" target/linux/qualcommax/image/ 2>/dev/null || {
-            echo "ERROR: ZN-M2 device NOT found! Build will fail!"
+          echo "=== Verify ipq60xx subtarget exists ==="
+          grep "ipq60xx" target/linux/qualcommax/Makefile 2>/dev/null || {
+            echo "ERROR: ipq60xx subtarget NOT found!"
             exit 1
           }
-          echo "ZN-M2 device definition found!"
+          echo "ipq60xx subtarget confirmed."
           echo ""
-          echo "=== Supported IPQ60xx devices ==="
+          echo "=== Existing IPQ60xx devices (before patching) ==="
           grep "TARGET_DEVICES += " target/linux/qualcommax/image/ipq60xx.mk 2>/dev/null || true
 
       - name: Cache toolchain and dl
@@ -124,9 +100,9 @@ jobs:
             openwrt/dl
             openwrt/staging_dir
             openwrt/build_dir/host
-          key: ${{ runner.os }}-zn-m2-v3-${{ github.event.inputs.source_branch || 'master' }}-${{ hashFiles('configs/zn-m2.config') }}
+          key: ${{ runner.os }}-zn-m2-v2512-${{ hashFiles('configs/zn-m2.config') }}
           restore-keys: |
-            ${{ runner.os }}-zn-m2-v3-${{ github.event.inputs.source_branch || 'master' }}-
+            ${{ runner.os }}-zn-m2-v2512-
 
       - name: Run DIY script (part 1 - before feeds)
         run: |
@@ -160,8 +136,8 @@ jobs:
           if grep -q "CONFIG_TARGET_DEVICE_qualcommax_ipq60xx_zn_m2=y" .config; then
             echo "OK: ZN-M2 device selected correctly!"
           else
-            echo "ERROR: ZN-M2 device NOT selected! Check config format."
-            echo "Current target device:"
+            echo "ERROR: ZN-M2 device NOT selected! Check config and patches."
+            echo "Current target devices:"
             grep "CONFIG_TARGET_DEVICE.*=y" .config || true
             exit 1
           fi
@@ -193,7 +169,7 @@ jobs:
         run: |
           cd openwrt
           echo "=== Output files ==="
-          find bin/targets/ -type f -name "*.bin" -o -name "*.ubi" -o -name "*.itb" 2>/dev/null || true
+          find bin/targets/ -type f \( -name "*.bin" -o -name "*.ubi" -o -name "*.itb" \) 2>/dev/null || true
           echo ""
           echo "=== File sizes ==="
           ls -lh bin/targets/*/*/ 2>/dev/null || true
@@ -202,7 +178,7 @@ jobs:
         run: |
           cd openwrt
           mkdir -p /tmp/firmware-output
-          find bin/targets/ -name "*sysupgrade*" -o -name "*factory*" -o -name "*.ubi" 2>/dev/null | \
+          find bin/targets/ \( -name "*sysupgrade*" -o -name "*factory*" -o -name "*.ubi" \) 2>/dev/null | \
             while read f; do cp "$f" /tmp/firmware-output/; done
           cp .config /tmp/firmware-output/zn-m2-build-config 2>/dev/null || true
           cd /tmp/firmware-output
@@ -227,8 +203,8 @@ jobs:
             ## ZN-M2 ImmortalWrt Firmware
 
             **Build Date:** ${{ github.run_id }}
-            **Source:** VIKINGYFY ImmortalWrt ${{ github.event.inputs.source_branch || 'master' }}
-            **Kernel:** 6.18
+            **Source:** ImmortalWrt v25.12.1 (STABLE RELEASE)
+            **Kernel:** 6.12
             **WiFi:** Disabled (not needed)
 
             ### Included Features
@@ -237,6 +213,7 @@ jobs:
             - Dual-line PPPoE dialing (WAN + IPTV)
             - Policy routing for IPTV traffic
             - Guangdong Telecom IPTV integration
+            - VLAN support (kmod-8021q)
 
             ### Installation
             1. Flash `*-factory.ubi` via U-Boot (first install)

@@ -9,8 +9,8 @@
 set -e
 
 # --- Configuration ---
-REPO_URL="https://github.com/VIKINGYFY/immortalwrt"
-REPO_BRANCH="master"
+REPO_URL="https://github.com/immortalwrt/immortalwrt"
+REPO_BRANCH="v25.12.1"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="${SCRIPT_DIR}/openwrt"
 CONFIG_FILE="${SCRIPT_DIR}/configs/zn-m2.config"
@@ -78,7 +78,7 @@ sudo apt-get clean
 echo ""
 
 # --- Step 2: Clone source ---
-info "Step 2: Cloning ImmortalWrt source (VIKINGYFY fork with ZN-M2 support)..."
+info "Step 2: Cloning ImmortalWrt v25.12.1 (stable)..."
 if [ -d "$BUILD_DIR" ]; then
     warn "Build directory exists: $BUILD_DIR"
     read -p "Reuse existing source? (y/N) " -r

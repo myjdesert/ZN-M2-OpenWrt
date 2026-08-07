@@ -15,7 +15,7 @@
 
 ## 固件特性
 
-- **ImmortalWrt** 基础系统（VIKINGYFY fork，master分支，6.18内核）
+- **ImmortalWrt v25.12.1** 稳定版基础系统（6.12内核）+ ZN-M2设备补丁
 - **PASSWALL** 代理工具（含 Xray-core 核心）
 - **rtp2httpd** IPTV组播转单播HTTP流
 - **广东电信IPTV内网融合** 预配置（双线独立拨号 + 策略路由）
@@ -70,8 +70,8 @@ ZN-M2-OpenWrt/
    - 在左侧选择 **Build ZN-M2 OpenWrt Firmware**
    - 点击右侧 **Run workflow** 按钮
    - 选择参数：
-     - `source_repo`: 保持默认 `vikingyfy`（VIKINGYFY fork，支持ZN-M2设备）
-     - `source_branch`: 保持默认 `master`（6.18内核）
+     - 直接点击 "Run workflow" 即可（使用固定 v25.12.1 稳定版）
+     - 无需额外参数
    - 点击绿色 **Run workflow** 按钮开始编译
 
 3. **等待编译完成**
@@ -130,7 +130,7 @@ sudo apt-get install -y build-essential clang flex bison g++ gawk \
   python3-distutils python3-setuptools rsync unzip zlib1g-dev
 
 # 克隆源码
-git clone --depth 1 -b master https://github.com/VIKINGYFY/immortalwrt openwrt
+git clone --depth 1 -b v25.12.1 https://github.com/immortalwrt/immortalwrt openwrt
 cd openwrt
 
 # 添加feeds
@@ -379,7 +379,7 @@ uci commit network
 ## 技术参考
 
 - [ImmortalWrt 官方](https://github.com/immortalwrt/immortalwrt)
-- [VIKINGYFY Fork（ZN-M2支持）](https://github.com/VIKINGYFY/immortalwrt)
+- [ImmortalWrt v25.12.1 稳定版](https://github.com/immortalwrt/immortalwrt/releases/tag/v25.12.1)
 - [PASSWALL 源码](https://github.com/Openwrt-Passwall/openwrt-passwall)
 - [rtp2httpd 源码](https://github.com/stackia/rtp2httpd)
 

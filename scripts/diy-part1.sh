@@ -31,7 +31,7 @@ echo "[2/3] Setting default hostname and timezone..."
 # 3. Display kernel version info
 echo "[3/3] Kernel version info:"
 grep -r "LINUX_VERSION" include/kernel-default.mk 2>/dev/null || \
-grep -r "LINUX_VERSION" include/kernel-6.18 2>/dev/null || \
+grep -r "LINUX_VERSION" include/kernel-6.12 2>/dev/null || \
 grep -r "LINUX_VERSION" include/ 2>/dev/null | head -5 || \
 echo "  (kernel version info not found in expected location)"
 
