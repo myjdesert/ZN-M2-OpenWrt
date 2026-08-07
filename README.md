@@ -18,6 +18,7 @@
 - **ImmortalWrt v25.12.1** 稳定版基础系统（6.12内核）+ ZN-M2设备补丁
 - **PASSWALL** 代理工具（含 Xray-core + sing-box 双核心）
 - **rtp2httpd** IPTV组播转单播HTTP流
+- **集客AC** 无线AP控制器（gecoosac，管理集客AP 7.6+）
 - **广东电信IPTV内网融合** 预配置（双线独立拨号 + 策略路由）
 - **TurboACC** 网络加速
 - **NSS硬件加速** QCA NSS驱动全系列
