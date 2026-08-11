@@ -7,7 +7,7 @@
 # Physical setup:
 #   wan  - Broadband PPPoE
 #   lan1 - IPTV PPPoE (dedicated port, no VLAN)
-#   lan2/3/4 - LAN devices
+#   lan2/3 - LAN bridge members
 #
 # ============================================================
 

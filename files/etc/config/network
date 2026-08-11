@@ -2,10 +2,12 @@
 # ZN-M2 Network Configuration
 # Dual-line dialing: WAN (broadband) + IPTV (separate port)
 # ============================================================
-# Physical ports:
-#   wan  - Broadband PPPoE
-#   lan1 - IPTV PPPoE (independent, routing table 100)
-#   lan2, lan3, lan4 - LAN bridge (192.168.0.0/24)
+# Physical ports (from DTS):
+#   wan  - Broadband PPPoE (dp5)
+#   lan1 - IPTV PPPoE (dp4, independent, routing table 100)
+#   lan2 - LAN bridge member (dp2)
+#   lan3 - LAN bridge member (dp1)
+# NOTE: ZN-M2 has only 3 LAN + 1 WAN = 4 ports total
 # ============================================================
 
 config interface 'loopback'
@@ -23,7 +25,6 @@ config device
 	option type 'bridge'
 	list ports 'lan2'
 	list ports 'lan3'
-	list ports 'lan4'
 
 config interface 'lan'
 	option device 'br-lan'
