@@ -125,7 +125,13 @@ jobs:
       - name: Apply custom config
         run: |
           cd openwrt
-          cp -r ../files/* . 2>/dev/null || true
+          # Copy custom files to OpenWrt overlay directory (files/)
+          # NOT to the build root - files/ is the special overlay that
+          # gets included in the firmware rootfs during image generation
+          mkdir -p files
+          cp -r ../files/* files/ 2>/dev/null || true
+          echo "=== Overlay files ==="
+          find files/ -type f 2>/dev/null || echo "No overlay files found!"
           cp ../configs/$CONFIG_FILE .config
           make defconfig
 
