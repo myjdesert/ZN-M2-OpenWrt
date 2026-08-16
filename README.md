@@ -20,10 +20,13 @@
 - **rtp2httpd** IPTV组播转单播HTTP流
 - **集客AC** 无线AP控制器（gecoosac，管理集客AP 7.6+）
 - **广东电信IPTV内网融合** 预配置（双线独立拨号 + 策略路由）
-- **TurboACC** 网络加速
-- **NSS硬件加速** QCA NSS驱动全系列
+- **Argon 主题** 现代感 LuCI 主题（含可视化配置）
+- **NSS硬件加速** kmod-qca-nss-dp + kmod-qca-ssdk（IPQ6000内置）
+- **全锥型 NAT** kmod-nft-fullcone（游戏/P2P友好）
+- **TurboACC** 软件加速
 - **VLAN支持** kmod-8021q（可用但非默认启用）
 - **中文LuCI界面** 简体中文
+- **DDNS 已移除** 按用户要求精简
 - **精简固件** 无WiFi，针对128MB NAND优化空间
 
 ## 目录结构
@@ -171,8 +174,8 @@ make -j$(nproc) V=s
 
 或通过SSH：
 ```bash
-scp *-sysupgrade.bin root@192.168.0.1:/tmp/
-ssh root@192.168.0.1
+scp *-sysupgrade.bin root@192.168.1.1:/tmp/
+ssh root@192.168.1.1
 sysupgrade -n /tmp/*-sysupgrade.bin
 ```
 
@@ -181,7 +184,7 @@ sysupgrade -n /tmp/*-sysupgrade.bin
 1. 断电，按住路由器Reset按钮
 2. 接通电源，保持按住5秒后松开
 3. 电脑设置IP为 `192.168.0.2`，网线连接路由器LAN口
-4. 浏览器访问 `192.168.0.1`（U-Boot网页界面）
+4. 浏览器访问 `192.168.1.1`（U-Boot网页界面）
 5. 上传 `*-factory.ubi` 文件刷入
 
 ---
@@ -197,7 +200,7 @@ sysupgrade -n /tmp/*-sysupgrade.bin
                 │   183.59/16, 125.88/16, 59.37/16, 202.105/16 (鉴权/回看)
                 │   239.77/16 (组播直播), 10/8 (IPTV内网)
                 └── rtp2httpd ──→ 组播转单播HTTP流
-                      └── 内网设备 http://192.168.0.1:5555 观看
+                      └── 内网设备 http://192.168.1.1:5555 观看
 ```
 
 ### 配置步骤
@@ -275,9 +278,9 @@ CCTV-3, 239.77.0.3:5000
 
 配置完成后，在内网设备上：
 
-- **浏览器直接观看：** `http://192.168.0.1:5555`
-- **VLC播放器：** 添加网络流 `http://192.168.0.1:5555/stream?id=频道ID`
-- **播放列表：** `http://192.168.0.1:5555/playlist.m3u`
+- **浏览器直接观看：** `http://192.168.1.1:5555`
+- **VLC播放器：** 添加网络流 `http://192.168.1.1:5555/stream?id=频道ID`
+- **播放列表：** `http://192.168.1.1:5555/playlist.m3u`
 
 #### 5. 验证IPTV连接
 
