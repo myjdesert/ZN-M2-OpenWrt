@@ -15,13 +15,14 @@
 
 ## 固件特性
 
-- **ImmortalWrt v25.12.1** 稳定版基础系统（6.12内核）+ ZN-M2设备补丁
+- **VIKINGYFY/ImmortalWrt main** 满血 NSS 分支（6.12+内核，完整NSS硬件加速）
+- **4端口独立显示** NSS数据平面驱动为每个端口注册独立netdev（lan1/lan2/lan3/wan）
 - **PASSWALL** 代理工具（含 Xray-core + sing-box 双核心）
 - **rtp2httpd** IPTV组播转单播HTTP流
 - **集客AC** 无线AP控制器（gecoosac，管理集客AP 7.6+）
 - **广东电信IPTV内网融合** 预配置（双线独立拨号 + 策略路由）
 - **Argon 主题** 现代感 LuCI 主题（含可视化配置）
-- **NSS硬件加速** kmod-qca-nss-dp + kmod-qca-ssdk（IPQ6000内置）
+- **NSS硬件加速** kmod-qca-nss-dp + kmod-qca-ssdk（IPQ6000满血NSS）
 - **全锥型 NAT** kmod-nft-fullcone（游戏/P2P友好）
 - **TurboACC** 软件加速
 - **VLAN支持** kmod-8021q（可用但非默认启用）
@@ -74,7 +75,7 @@ ZN-M2-OpenWrt/
    - 在左侧选择 **Build ZN-M2 OpenWrt Firmware**
    - 点击右侧 **Run workflow** 按钮
    - 选择参数：
-     - 直接点击 "Run workflow" 即可（使用固定 v25.12.1 稳定版）
+     - 直接点击 "Run workflow" 即可（使用 VIKINGYFY/ImmortalWrt main 分支，满血NSS支持）
      - 无需额外参数
    - 点击绿色 **Run workflow** 按钮开始编译
 
@@ -133,8 +134,8 @@ sudo apt-get install -y build-essential clang flex bison g++ gawk \
   gcc-multilib g++-multilib gettext git libncurses5-dev libssl-dev \
   python3-distutils python3-setuptools rsync unzip zlib1g-dev
 
-# 克隆源码
-git clone --depth 1 -b v25.12.1 https://github.com/immortalwrt/immortalwrt openwrt
+# 克隆源码 (VIKINGYFY/ImmortalWrt main 分支，满血NSS支持)
+git clone --depth 1 -b main https://github.com/VIKINGYFY/immortalwrt.git openwrt
 cd openwrt
 
 # 添加feeds
@@ -183,7 +184,7 @@ sysupgrade -n /tmp/*-sysupgrade.bin
 
 1. 断电，按住路由器Reset按钮
 2. 接通电源，保持按住5秒后松开
-3. 电脑设置IP为 `192.168.0.2`，网线连接路由器LAN口
+3. 电脑设置IP为 `192.168.1.2`，网线连接路由器LAN口
 4. 浏览器访问 `192.168.1.1`（U-Boot网页界面）
 5. 上传 `*-factory.ubi` 文件刷入
 
@@ -381,8 +382,8 @@ uci commit network
 
 ## 技术参考
 
+- [VIKINGYFY/ImmortalWrt (NSS Full Support)](https://github.com/VIKINGYFY/immortalwrt)
 - [ImmortalWrt 官方](https://github.com/immortalwrt/immortalwrt)
-- [ImmortalWrt v25.12.1 稳定版](https://github.com/immortalwrt/immortalwrt/releases/tag/v25.12.1)
 - [PASSWALL 源码](https://github.com/Openwrt-Passwall/openwrt-passwall)
 - [rtp2httpd 源码](https://github.com/stackia/rtp2httpd)
 

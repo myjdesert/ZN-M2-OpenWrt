@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
 
 env:
-  REPO_URL: https://github.com/immortalwrt/immortalwrt
-  REPO_TAG: v25.12.1
+  REPO_URL: https://github.com/VIKINGYFY/immortalwrt.git
+  REPO_TAG: main
   CONFIG_FILE: zn-m2.config
   DIY_SH1: diy-part1.sh
   DIY_SH2: diy-part2.sh
@@ -28,8 +28,8 @@ jobs:
           echo "============================================"
           echo " ZN-M2 ImmortalWrt Firmware Build"
           echo "============================================"
-          echo " Source: ImmortalWrt ${{ env.REPO_TAG }} (STABLE)"
-          echo " Kernel: 6.12"
+          echo " Source: VIKINGYFY/ImmortalWrt ${{ env.REPO_TAG }} (NSS Full Support)"
+          echo " Kernel: 6.12+ (with NSS data plane)"
           echo " WiFi:   DISABLED (no WiFi needed)"
           echo " IPTV:   Dual-line PPPoE + policy routing"
           echo " Date:   $(date '+%Y-%m-%d %H:%M:%S %Z')"
@@ -72,7 +72,7 @@ jobs:
 
       - name: Clone source code
         run: |
-          echo "Cloning ImmortalWrt $REPO_TAG (stable release)..."
+          echo "Cloning VIKINGYFY/ImmortalWrt $REPO_TAG (NSS full support)..."
           git clone --depth 1 --single-branch -b "$REPO_TAG" \
             "$REPO_URL" openwrt
 
@@ -206,25 +206,29 @@ jobs:
           tag_name: ZN-M2-${{ github.run_id }}
           name: ZN-M2 Firmware ${{ github.run_id }}
           body: |
-            ## ZN-M2 ImmortalWrt Firmware
+            ## ZN-M2 ImmortalWrt Firmware (NSS Full Support)
 
             **Build Date:** ${{ github.run_id }}
-            **Source:** ImmortalWrt v25.12.1 (STABLE RELEASE)
-            **Kernel:** 6.12
+            **Source:** VIKINGYFY/ImmortalWrt main (NSS Full Support)
+            **Kernel:** 6.12+ with NSS data plane
             **WiFi:** Disabled (not needed)
 
             ### Included Features
-            - PASSWALL (Xray-core) - transparent proxy
+            - PASSWALL (Xray + sing-box) - transparent proxy
             - rtp2httpd - IPTV multicast to HTTP unicast
+            - gecoosac (集客AC) - AP controller
             - Dual-line PPPoE dialing (WAN + IPTV)
             - Policy routing for IPTV traffic
             - Guangdong Telecom IPTV integration
             - VLAN support (kmod-8021q)
+            - NSS hardware acceleration (kmod-qca-nss-dp)
+            - Full Cone NAT (kmod-nft-fullcone)
+            - Argon theme (luci-theme-argon)
 
             ### Installation
             1. Flash `*-factory.ubi` via U-Boot (first install)
             2. Flash `*-sysupgrade.bin` via LuCI (upgrade)
-            3. Default IP: 192.168.0.1
+            3. Default IP: 192.168.1.1
             4. No default password (set on first login)
 
             ### Post-install

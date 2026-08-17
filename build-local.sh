@@ -9,8 +9,8 @@
 set -e
 
 # --- Configuration ---
-REPO_URL="https://github.com/immortalwrt/immortalwrt"
-REPO_BRANCH="v25.12.1"
+REPO_URL="https://github.com/VIKINGYFY/immortalwrt.git"
+REPO_BRANCH="main"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="${SCRIPT_DIR}/openwrt"
 CONFIG_FILE="${SCRIPT_DIR}/configs/zn-m2.config"
