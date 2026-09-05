@@ -15,16 +15,16 @@
 
 ## 固件特性
 
-- **VIKINGYFY/ImmortalWrt main** 满血 NSS 分支（6.12+内核，完整NSS硬件加速）
+- **VIKINGYFY/ImmortalWrt main** 满血 NSS 分支（**6.18 内核**，完整NSS硬件加速）
 - **4端口独立显示** NSS数据平面驱动为每个端口注册独立netdev（lan1/lan2/lan3/wan）
 - **PASSWALL** 代理工具（含 Xray-core + sing-box 双核心）
 - **rtp2httpd** IPTV组播转单播HTTP流
 - **集客AC** 无线AP控制器（gecoosac，管理集客AP 7.6+）
 - **广东电信IPTV内网融合** 预配置（双线独立拨号 + 策略路由）
 - **Argon 主题** 现代感 LuCI 主题（含可视化配置）
-- **NSS硬件加速** kmod-qca-nss-dp + kmod-qca-ssdk（IPQ6000满血NSS）
-- **全锥型 NAT** kmod-nft-fullcone（游戏/P2P友好）
-- **TurboACC** 软件加速
+- **NSS硬件加速（满血）** kmod-qca-nss-drv + nss-firmware + kmod-qca-nss-ecm（ECM加速引擎）+ nss-dp + ssdk + crypto
+- **全锥型 NAT** kmod-nft-fullcone（游戏/P2P友好），wan 区域已开启 `option fullcone '1'`
+- **TurboACC** 提供 NSS/ECM 加速的开关界面
 - **VLAN支持** kmod-8021q（可用但非默认启用）
 - **中文LuCI界面** 简体中文
 - **DDNS 已移除** 按用户要求精简
@@ -70,14 +70,12 @@ ZN-M2-OpenWrt/
    - 将本项目 Fork 到自己的仓库
 
 2. **运行编译**
-   - 进入你 Fork 后的仓库页面
-   - 点击顶部 **Actions** 标签
-   - 在左侧选择 **Build ZN-M2 OpenWrt Firmware**
-   - 点击右侧 **Run workflow** 按钮
-   - 选择参数：
-     - 直接点击 "Run workflow" 即可（使用 VIKINGYFY/ImmortalWrt main 分支，满血NSS支持）
-     - 无需额外参数
-   - 点击绿色 **Run workflow** 按钮开始编译
+   - **自动触发**：推送代码到 `main` 分支时会自动开始编译（工作流已配置 `on: push`）
+   - **手动触发**：
+     - 进入仓库页面 → 点击顶部 **Actions** 标签
+     - 左侧选择 **Build ZN-M2 OpenWrt Firmware**
+     - 点击右侧 **Run workflow** → 再次点击绿色 **Run workflow**
+   - 源码固定为 VIKINGYFY/ImmortalWrt main 分支（满血NSS支持，6.18内核），无需额外参数
 
 3. **等待编译完成**
    - 编译约需 3~5 小时

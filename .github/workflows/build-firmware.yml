@@ -2,6 +2,15 @@ name: Build ZN-M2 OpenWrt Firmware
 
 on:
   workflow_dispatch:
+  # Auto-build on push so a committed fix is always compiled.
+  # (Previously the source switch was pushed but no build was ever triggered,
+  #  so the flashed firmware was still produced from the old source.)
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '.gitignore'
 
 env:
   REPO_URL: https://github.com/VIKINGYFY/immortalwrt.git
@@ -29,7 +38,7 @@ jobs:
           echo " ZN-M2 ImmortalWrt Firmware Build"
           echo "============================================"
           echo " Source: VIKINGYFY/ImmortalWrt ${{ env.REPO_TAG }} (NSS Full Support)"
-          echo " Kernel: 6.12+ (with NSS data plane)"
+          echo " Kernel: 6.18 (full NSS: nss-drv + ecm + nss-dp + ssdk)"
           echo " WiFi:   DISABLED (no WiFi needed)"
           echo " IPTV:   Dual-line PPPoE + policy routing"
           echo " Date:   $(date '+%Y-%m-%d %H:%M:%S %Z')"
@@ -100,9 +109,12 @@ jobs:
             openwrt/dl
             openwrt/staging_dir
             openwrt/build_dir/host
-          key: ${{ runner.os }}-zn-m2-v2512-${{ hashFiles('configs/zn-m2.config') }}
+          # Prefix must change when the source tree changes (v25.12.1 -> VIKINGYFY/main,
+          # kernel 6.12 -> 6.18), otherwise a stale staging_dir would be restored
+          # on top of a different source tree and break the build.
+          key: ${{ runner.os }}-zn-m2-viky-main-${{ hashFiles('configs/zn-m2.config') }}
           restore-keys: |
-            ${{ runner.os }}-zn-m2-v2512-
+            ${{ runner.os }}-zn-m2-viky-main-
 
       - name: Run DIY script (part 1 - before feeds)
         run: |
@@ -137,6 +149,14 @@ jobs:
 
           echo "=== Key config items ==="
           grep -E "TARGET_qualcommax|TARGET.*DEVICE.*zn_m2|LINUX|passwall|rtp2httpd|gecoosac|PPPOE|pppoe" .config || true
+
+          echo "=== NSS / hardware acceleration packages ==="
+          grep -E "nss|ssdk|fullcone" .config || echo "  WARNING: no NSS packages selected!"
+
+          echo "=== NSS packages available in source tree ==="
+          ls package/qca-nss/ 2>/dev/null || echo "  WARNING: package/qca-nss not found!"
+          echo "=== Device DTS in source tree ==="
+          ls target/linux/qualcommax/dts/ipq6000-m2.dts 2>/dev/null || echo "  WARNING: ipq6000-m2.dts not found!"
 
           echo "=== Verify target device ==="
           if grep -q "CONFIG_TARGET_qualcommax_ipq60xx_DEVICE_zn_m2=y" .config; then
@@ -210,7 +230,7 @@ jobs:
 
             **Build Date:** ${{ github.run_id }}
             **Source:** VIKINGYFY/ImmortalWrt main (NSS Full Support)
-            **Kernel:** 6.12+ with NSS data plane
+            **Kernel:** 6.18 with full NSS stack
             **WiFi:** Disabled (not needed)
 
             ### Included Features
@@ -221,7 +241,8 @@ jobs:
             - Policy routing for IPTV traffic
             - Guangdong Telecom IPTV integration
             - VLAN support (kmod-8021q)
-            - NSS hardware acceleration (kmod-qca-nss-dp)
+            - **NSS hardware acceleration** (nss-drv + ecm + nss-dp + ssdk + firmware)
+            - **All 4 ports shown as separate devices** (lan1/lan2/lan3/wan)
             - Full Cone NAT (kmod-nft-fullcone)
             - Argon theme (luci-theme-argon)
 

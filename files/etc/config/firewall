@@ -27,6 +27,8 @@ config zone
 	option forward 'REJECT'
 	option masq '1'
 	option mtu_fix '1'
+	# Full Cone NAT (requires kmod-nft-fullcone, built in this firmware)
+	option fullcone '1'
 
 # --- IPTV Zone ---
 config zone
