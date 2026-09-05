@@ -183,13 +183,22 @@ jobs:
         run: |
           cd openwrt
           echo "Starting compilation at $(date)"
-          make -j$(nproc) V=s 2>&1 | tee build.log | tail -100 || {
+          # NOTE: `make ... | tail` would make the pipeline exit with tail's
+          # status, so a failed make would be reported as success. Use
+          # PIPESTATUS to get make's real exit code.
+          set +e
+          make -j$(nproc) V=s 2>&1 | tee build.log | tail -100
+          rc=${PIPESTATUS[0]}
+          if [ "$rc" -ne 0 ]; then
             echo "============================================"
-            echo "First pass failed, retrying with single thread..."
+            echo "First pass failed (rc=$rc), retrying single thread..."
             echo "============================================"
             make -j1 V=s 2>&1 | tail -200
-          }
-          echo "Compilation finished at $(date)"
+            rc=${PIPESTATUS[0]}
+          fi
+          set -e
+          echo "Compilation finished at $(date) with rc=$rc"
+          exit $rc
 
       - name: List output files
         run: |
@@ -199,6 +208,17 @@ jobs:
           echo ""
           echo "=== File sizes ==="
           ls -lh bin/targets/*/*/ 2>/dev/null || true
+
+      - name: Verify firmware images exist
+        run: |
+          cd openwrt
+          if ls bin/targets/*/*/*-squashfs-sysupgrade.bin bin/targets/*/*/*-squashfs-factory.ubi >/dev/null 2>&1; then
+            echo "OK: sysupgrade + factory images produced."
+          else
+            echo "::error::No squashfs sysupgrade/factory images found - build produced no firmware!"
+            find bin/targets/ -maxdepth 3 2>/dev/null || true
+            exit 1
+          fi
 
       - name: Prepare artifacts
         run: |
@@ -220,7 +240,11 @@ jobs:
           retention-days: 30
 
       - name: Create release
-        if: github.event_name == 'workflow_dispatch'
+        # Must also run for push-triggered builds: with
+        # `github.event_name == 'workflow_dispatch'` the push builds produced
+        # images and artifacts but never a release, so no firmware appeared
+        # on the Releases page even though the build was successful.
+        if: success()
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ZN-M2-${{ github.run_id }}
