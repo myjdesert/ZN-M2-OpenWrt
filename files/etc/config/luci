@@ -1,0 +1,8 @@
+config core 'main'
+	# Fixed to Simplified Chinese instead of following the browser language.
+	# The language code must match the one registered by the luci-i18n-*
+	# packages: feeds/luci/luci.mk does `uci set luci.languages.$(subst -,_,zh-cn)`
+	# i.e. zh_cn (underscore, not dash).
+	option lang 'zh_cn'
+	option mediaurlbase '/luci-static/argon'
+	option resourcebase '/luci-static/resources'

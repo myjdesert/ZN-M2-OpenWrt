@@ -153,6 +153,18 @@ jobs:
           echo "=== NSS / hardware acceleration packages ==="
           grep -E "nss|ssdk|fullcone" .config || echo "  WARNING: no NSS packages selected!"
 
+          echo "=== Chinese (Simplified) language support ==="
+          if grep -q "^CONFIG_LUCI_LANG_zh_Hans=y" .config; then
+            echo "  [OK] CONFIG_LUCI_LANG_zh_Hans=y (gate for luci-i18n-*-zh-cn)"
+          else
+            echo "  ::error::CONFIG_LUCI_LANG_zh_Hans is not set - every"
+            echo "  luci-i18n-*-zh-cn package is dropped by defconfig and the UI"
+            echo "  stays English. Fix configs/zn-m2.config."
+            exit 1
+          fi
+          grep -E "^CONFIG_PACKAGE_luci-i18n-.*-zh-cn=y" .config || \
+            echo "  WARNING: no Chinese translation packages selected!"
+
           echo "=== NSS packages available in source tree ==="
           ls package/qca-nss/ 2>/dev/null || echo "  WARNING: package/qca-nss not found!"
           echo "=== Device DTS in source tree ==="
