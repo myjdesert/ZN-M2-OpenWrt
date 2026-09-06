@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # "DEFAULT_PACKAGES += \" and the actual package names live on the tab-indented
 # continuation lines. Sed must target those continuation lines, otherwise
 # nothing gets removed at all.
-echo "[1/5] Removing WiFi from DEFAULT_PACKAGES..."
+echo "[1/6] Removing WiFi from DEFAULT_PACKAGES..."
 TARGET_MAKEFILE="target/linux/qualcommax/Makefile"
 IPQ60XX_MK="target/linux/qualcommax/ipq60xx/target.mk"
 
@@ -46,7 +46,7 @@ sed -n '/^DEFAULT_PACKAGES/,/^\$(eval/p' "$TARGET_MAKEFILE" 2>/dev/null | head -
 grep "^DEFAULT_PACKAGES" "$IPQ60XX_MK" 2>/dev/null || true
 
 # 2. Clone and install rtp2httpd as a package
-echo "[2/5] Adding rtp2httpd package..."
+echo "[2/6] Adding rtp2httpd package..."
 if [ ! -d "package/rtp2httpd" ]; then
     git clone --depth 1 https://github.com/stackia/rtp2httpd.git /tmp/rtp2httpd 2>/dev/null || {
         echo "  -> Failed to clone from github.com, trying mirror..."
@@ -72,7 +72,7 @@ else
 fi
 
 # 3. Clone and install gecoosac (集客AC controller) as a package
-echo "[3/5] Adding gecoosac (集客AC) package..."
+echo "[3/6] Adding gecoosac (集客AC) package..."
 if [ ! -d "package/luci-app-gecoosac" ]; then
     git clone --depth 1 https://github.com/laipeng668/luci-app-gecoosac.git package/luci-app-gecoosac 2>/dev/null || {
         echo "  -> Failed to clone from github.com, trying gitcode mirror..."
@@ -90,7 +90,7 @@ else
 fi
 
 # 4. Clone and install fullconenat-nft as a package
-echo "[4/5] Adding fullconenat-nft (Full Cone NAT) package..."
+echo "[4/6] Adding fullconenat-nft (Full Cone NAT) package..."
 if [ ! -d "package/fullconenat-nft" ]; then
     git clone --depth 1 https://github.com/hubbylei/fullconenat-nft.git /tmp/fullconenat-nft 2>/dev/null || {
         echo "  -> Failed to clone from github.com, trying gitcode mirror..."
@@ -112,8 +112,34 @@ else
     echo "  -> fullconenat-nft package already exists"
 fi
 
-# 5. Verify everything is in place
-echo "[5/5] Final verification..."
+# 5. Add luci-app-turboacc
+# The immortalwrt/luci feed no longer ships luci-app-turboacc, so use the
+# maintained fork. Only the LuCI app is needed: on qualcommax the accelerator
+# is QCA-NSS-ECM (already installed via DEFAULT_PACKAGES) and the app detects
+# it at runtime through /sys/kernel/debug/ecm/ecm_nss_ipv4.
+# The Shortcut-FE / fast-classifier kernel modules are intentionally NOT added:
+# they do not exist in this source tree and are not required.
+echo "[5/6] Adding luci-app-turboacc..."
+if [ ! -d "package/luci-app-turboacc" ]; then
+    git clone --depth 1 https://github.com/chenmozhijin/turboacc.git /tmp/turboacc 2>/dev/null || {
+        echo "  -> Failed to clone from github.com, trying gitcode mirror..."
+        git clone --depth 1 https://gitcode.com/chenmozhijin/turboacc.git /tmp/turboacc 2>/dev/null || {
+            echo "  -> ERROR: Could not clone turboacc!"
+        }
+    }
+    if [ -d "/tmp/turboacc/luci-app-turboacc" ]; then
+        cp -r /tmp/turboacc/luci-app-turboacc package/luci-app-turboacc
+        echo "  -> luci-app-turboacc added"
+    else
+        echo "  -> WARNING: luci-app-turboacc directory not found in repo!"
+    fi
+    rm -rf /tmp/turboacc
+else
+    echo "  -> luci-app-turboacc already exists"
+fi
+
+# 6. Verify everything is in place
+echo "[6/6] Final verification..."
 echo ""
 
 echo "  -> ZN-M2 device definition (should be built-in):"
@@ -147,7 +173,7 @@ grep "KERNEL_PATCHVER" "$TARGET_MAKEFILE" 2>/dev/null || true
 echo ""
 
 echo "  -> Key packages:"
-for pkg in luci-app-passwall rtp2httpd luci-app-rtp2httpd gecoosac luci-app-gecoosac fullconenat-nft; do
+for pkg in luci-app-passwall rtp2httpd luci-app-rtp2httpd gecoosac luci-app-gecoosac fullconenat-nft luci-app-turboacc; do
     found=$(find package/ feeds/ -path "*/$pkg/Makefile" 2>/dev/null | head -1)
     if [ -n "$found" ]; then
         echo "    [OK] $pkg"
@@ -168,6 +194,7 @@ echo " NSS:     nss-drv + ecm + nss-dp + ssdk + firmware (from DEFAULT_PACKAGES)
 echo " Ports:   lan1 / lan2 / lan3 / wan (independent netdevs, labels in DTS)"
 echo " IPTV:    Dual-line PPPoE + policy routing"
 echo " Features: PASSWALL (Xray+sing-box) + rtp2httpd + 集客AC + Argon主题 + NSS + 全锥型NAT"
+echo " TurboACC: luci-app-turboacc (detects the running QCA-NSS-ECM)"
 echo "============================================"
 
 echo ""
