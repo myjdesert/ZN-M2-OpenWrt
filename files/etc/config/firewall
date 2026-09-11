@@ -9,6 +9,10 @@ config defaults
 	option output 'ACCEPT'
 	option forward 'REJECT'
 	option synflood_protect '1'
+	option flow_offloading '1'
+	option flow_offloading_hw '0'
+	# Full Cone NAT (requires kmod-nft-fullcone, built in this firmware)
+	option fullcone '1'
 
 # --- LAN Zone ---
 config zone
@@ -52,6 +56,35 @@ config forwarding
 config forwarding
 	option src 'iptv'
 	option dest 'lan'
+
+# ===== IPv6 essentials (MUST be present or DHCPv6-PD reply is dropped) =====
+config rule
+	option name 'Allow-DHCPv6'
+	option src 'wan'
+	option proto 'udp'
+	option dest_port '546'
+	option family 'ipv6'
+	option target 'ACCEPT'
+	option enabled '1'
+
+config rule
+	option name 'Allow-ICMPv6-Input'
+	option src 'wan'
+	option proto 'icmp'
+	option limit '1000/sec'
+	option family 'ipv6'
+	option target 'ACCEPT'
+	option enabled '1'
+
+config rule
+	option name 'Allow-ICMPv6-Forward'
+	option src 'wan'
+	option dest '*'
+	option proto 'icmp'
+	option limit '1000/sec'
+	option family 'ipv6'
+	option target 'ACCEPT'
+	option enabled '1'
 
 # --- Rules: IPTV -> LAN ---
 config rule

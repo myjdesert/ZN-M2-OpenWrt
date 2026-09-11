@@ -44,13 +44,23 @@ config interface 'wan'
 	option metric '10'
 	option multipath 'off'
 
-# --- IPTV: Independent PPPoE on lan1 ---
+# Explicit wan6: request IPv6-PD (Prefix Delegation) from ISP.
+# reqprefix 'auto' lets odhcp6c ask for the ISP's default prefix length
+# (Guangdong Telecom typically delegates /56). Do NOT hardcode '64'.
+config interface 'wan6'
+	option device '@wan'
+	option proto 'dhcpv6'
+	option reqaddress 'try'
+	option reqprefix 'auto'
+	option norelease '1'
+
+# --- IPTV: Independent PPPoE on lan1 (no IPv6 needed) ---
 config interface 'IPTV'
 	option proto 'pppoe'
 	option device 'lan1'
 	option username 'jmITV12345678@iptv.gd'
 	option password '12345678'
-	option ipv6 'auto'
+	option ipv6 '0'
 	option norelease '1'
 	option multipath 'off'
 	option ip4table '100'
