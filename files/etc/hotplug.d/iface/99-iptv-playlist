@@ -1,0 +1,5 @@
+#!/bin/sh
+# 当 IPTV 专线拨号成功（ifup）时，立即重新鉴权并刷新播放列表到 /www/iptv/playlist.m3u
+# 这样路由器一拨上 IPTV 就能马上提供最新频道列表，无需等到每日定时任务。
+[ "$ACTION" = "ifup" ] && [ "$INTERFACE" = "IPTV" ] && \
+    ( sleep 5; sh /usr/bin/gd-iptv-playlist.sh generate >>/tmp/gd-iptv.log 2>&1 ) &

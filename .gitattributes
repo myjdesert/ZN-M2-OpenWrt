@@ -5,6 +5,14 @@
 *.config text eol=lf
 *.custom text eol=lf
 
+# Extensionless files are NOT matched by the globs above but are still consumed by
+# busybox sh on the router — a stray CR there breaks them at runtime.
+files/etc/crontabs/root text eol=lf
+files/etc/hotplug.d/iface/* text eol=lf
+files/etc/uci-defaults/* text eol=lf
+files/etc/iptv/* text eol=lf
+files/etc/config/* text eol=lf
+
 # Ignore binary and build artifacts
 *.bin binary
 *.ubi binary

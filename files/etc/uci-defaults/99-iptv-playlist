@@ -1,0 +1,8 @@
+#!/bin/sh
+# 首次启动：启用 cron 服务并创建输出目录。
+# 播放列表由 /etc/hotplug.d/iface/99-iptv-playlist（IPTV 拨号后触发）
+# 与 /etc/crontabs/root（每日 04:17）共同维护，写入 /www/iptv/playlist.m3u。
+mkdir -p /www/iptv /etc/iptv
+/etc/init.d/cron enable
+/etc/init.d/cron start
+exit 0
