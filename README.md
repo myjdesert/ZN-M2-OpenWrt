@@ -24,6 +24,7 @@
 - **Argon 主题** 现代感 LuCI 主题（含可视化配置）
 - **NSS硬件加速（满血）** kmod-qca-nss-drv + nss-firmware + kmod-qca-nss-ecm（ECM加速引擎）+ nss-dp + ssdk + crypto
 - **全锥型 NAT** kmod-nft-fullcone（游戏/P2P友好），wan 区域已开启 `option fullcone '1'`
+- **UPnP IGD / NAT-PMP** miniupnpd-nftables（游戏主机/P2P 客户端自动开端口），默认启用并锁定 wan 出口，含防火墙重载保护
 - **TurboACC** 提供 NSS/ECM 加速的开关界面
 - **VLAN支持** kmod-8021q（可用但非默认启用）
 - **中文LuCI界面** 简体中文
@@ -42,9 +43,11 @@ ZN-M2-OpenWrt/
 │   └── etc/
 │       ├── config/
 │       │   ├── network         # 网络配置（双线PPPoE + 策略路由）
-│       │   ├── firewall        # 防火墙配置（含IPTV区域规则）
+│       │   ├── firewall        # 防火墙配置（含IPTV区域规则 + UPnP include）
 │       │   ├── dhcp            # DHCP配置
-│       │   └── system          # 系统配置（时区等）
+│       │   ├── system          # 系统配置（时区等）
+│       │   └── upnpd           # UPnP IGD 配置（默认启用，锁定 wan 出口）
+│       ├── upnp-fw-hook.sh     # fw4 重载后恢复 UPnP 端口映射
 │       └── uci-defaults/
 │           └── zz-iptv-fusion.sh  # 首次启动IPTV初始化
 ├── scripts/
@@ -315,6 +318,51 @@ cat /proc/net/igmp
 
 - 固件包含 **Xray-core** + **sing-box** 双核心
 - Xray-core自2026年6月起要求自签证书配置pinnedPeerCertSha256参数
+
+---
+
+## UPnP / NAT-PMP 配置
+
+固件已内置并默认启用 UPnP IGD（`miniupnpd-nftables`）。LAN 侧设备（游戏主机、
+P2P/BT 客户端、部分会议软件）可自动向路由器请求 WAN 端口映射。
+
+**LuCI 入口：** 服务 → **UPnP IGD & PCP**
+
+### 关键点：外网接口已锁定为 `wan`
+
+本机是双 PPPoE 拨号（`wan` = 宽带拨号，`lan1` = IPTV 拨号）。若不显式指定外网
+接口，`network_find_wan` 在这个双拨环境下会**错选 IPTV 接口**
+（`pppoe-IPTV`），导致所有端口映射从 IPTV 线路发出、外网永远访问不到。
+
+固件已在 `/etc/config/upnpd` 中写死：
+
+```
+option external_iface 'wan'
+```
+
+### 端口映射与防火墙重载
+
+miniupnpd 把 DNAT/转发规则写进 fw4 的 `upnp_*` 链；而 `fw4 reload` 会重建整个
+`inet fw4` 表，把规则清空，守护进程却毫不知情（**PassWall 切节点就会触发防火墙
+重载**）。固件通过 `/etc/upnp-fw-hook.sh`（注册为 firewall 的 `include`）在防火墙
+重建后自动重启 miniupnpd，从 `upnp_lease_file` 恢复全部映射。
+
+### 验证
+
+```bash
+# 守护进程是否在运行
+pgrep -f '^/usr/sbin/miniupnpd'
+
+# 当前生效的映射规则
+nft list chain inet fw4 upnp_prerouting
+
+# 租约记录
+cat /var/run/miniupnpd.leases
+```
+
+> **注意：** 若宽带处于运营商大内网（CGNAT，WAN 地址为 `10.x` / `100.64.x` /
+> `172.16.x` 等私网段），路由器侧映射可正常建立，但外网直连还需运营商侧配合，
+> 这属于线路环境限制，与固件配置无关。
 
 ---
 

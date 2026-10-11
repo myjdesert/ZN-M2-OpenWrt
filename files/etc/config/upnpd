@@ -1,0 +1,60 @@
+# ============================================================
+# ZN-M2 UPnP IGD / NAT-PMP Configuration
+# ============================================================
+#
+# Enabled out of the box. Backend is miniupnpd-nftables, so the forwarding
+# rules are installed into the fw4 nftables table (upnp_* chains).
+#
+# IMPORTANT - external_iface MUST stay pinned to 'wan':
+#   This box dials PPPoE twice (wan = broadband, lan1 = IPTV). If
+#   external_iface is left unset, the init script falls back to
+#   network_find_wan(), and on this dual-PPPoE setup that helper picks the
+#   IPTV interface (pppoe-IPTV) instead of the real internet uplink
+#   (pppoe-wan) - every port mapping would then be sent out of the wrong
+#   line and never reach the LAN client.
+#
+# Port mappings survive a firewall reload:
+#   fw4 rebuilds the whole 'inet fw4' table on reload, wiping the upnp_*
+#   chains while miniupnpd keeps running and never notices. The hook
+#   /etc/upnp-fw-hook.sh (registered through a firewall 'include') restarts
+#   the daemon afterwards, which restores every mapping from
+#   upnp_lease_file. PassWall reloads the firewall on node switch, so this
+#   path is exercised in normal use.
+# ============================================================
+
+config upnpd config
+	option enabled		1
+	option enable_natpmp	1
+	option enable_upnp	1
+	# Only allow a mapping for the host that requested it
+	option secure_mode	1
+	option log_output	0
+	option download		20480
+	option upload		2048
+	# Pinned on purpose - see the note above
+	option external_iface	wan
+	option internal_iface	lan
+	option port		5000
+	option upnp_lease_file	/var/run/miniupnpd.leases
+	option igdv1		1
+	# IPv6 UPnP disabled: this WAN side is IPv4-only
+	option ipv6_disable	1
+	option use_stun		0
+	option stun_host	stun.miwifi.com
+	option stun_port	3478
+	# Allow private-range external addresses (ISP assigns 172.16.x.x via CGNAT)
+	option force_forwarding	1
+
+config perm_rule
+	option action		allow
+	option ext_ports	1024-65535
+	option int_addr		0.0.0.0/0
+	option int_ports	1024-65535
+	option comment		"Allow high ports"
+
+config perm_rule
+	option action		deny
+	option ext_ports	0-65535
+	option int_addr		0.0.0.0/0
+	option int_ports	0-65535
+	option comment		"Default deny"

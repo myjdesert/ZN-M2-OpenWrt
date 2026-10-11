@@ -130,3 +130,15 @@ config nat
 # 	list proto 'tcp'
 # 	option dest_port '443 51400'
 # 	option target 'ACCEPT'
+
+# ===== UPnP IGD (miniupnpd) support =====
+# fw4 rebuilds the entire 'inet fw4' table on every reload, which wipes the
+# DNAT/forward rules miniupnpd wrote into the upnp_* chains while the daemon
+# keeps running and never notices (PassWall reloads the firewall on node
+# switch, so this happens in normal use). This hook restarts miniupnpd right
+# after the firewall is rebuilt, restoring all mappings from upnp_lease_file.
+# See files/etc/upnp-fw-hook.sh for the full explanation.
+config include
+	option type 'script'
+	option path '/etc/upnp-fw-hook.sh'
+	option enabled '1'

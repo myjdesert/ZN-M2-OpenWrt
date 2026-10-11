@@ -13,6 +13,9 @@ files/etc/uci-defaults/* text eol=lf
 files/etc/iptv/* text eol=lf
 files/etc/config/* text eol=lf
 
+# UPnP firewall-reload hook - executed by fw4 as a script, a stray CR breaks it
+files/etc/upnp-fw-hook.sh text eol=lf
+
 # Ignore binary and build artifacts
 *.bin binary
 *.ubi binary

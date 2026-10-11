@@ -150,6 +150,14 @@ jobs:
           echo "=== Key config items ==="
           grep -E "TARGET_qualcommax|TARGET.*DEVICE.*zn_m2|LINUX|passwall|rtp2httpd|gecoosac|PPPOE|pppoe" .config || true
 
+          echo "=== UPnP (miniupnpd) ==="
+          if grep -q "^CONFIG_PACKAGE_miniupnpd-nftables=y" .config; then
+            echo "  [OK] miniupnpd-nftables=y (nftables backend, matches fw4)"
+          else
+            echo "  WARNING: miniupnpd-nftables not selected - UPnP will be missing!"
+          fi
+          grep -E "miniupnpd|luci-app-upnp|luci-i18n-upnp" .config || true
+
           echo "=== NSS / hardware acceleration packages ==="
           grep -E "nss|ssdk|fullcone" .config || echo "  WARNING: no NSS packages selected!"
 
@@ -280,6 +288,7 @@ jobs:
             - **NSS hardware acceleration** (nss-drv + ecm + nss-dp + ssdk + firmware)
             - **All 4 ports shown as separate devices** (lan1/lan2/lan3/wan)
             - Full Cone NAT (kmod-nft-fullcone)
+            - UPnP IGD / NAT-PMP (miniupnpd-nftables, external_iface pinned to wan)
             - Argon theme (luci-theme-argon)
 
             ### Installation
